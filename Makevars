@@ -1,0 +1,17 @@
+# -*- mode: makefile -*-
+LIBRARY_DIR := $(realpath $(CURDIR)/../library)
+CRAN_DIR    := $(realpath $(CURDIR)/../CRAN)
+
+DOCKER_IMAGE_NAME := prlprg/project-evalr
+DOCKER_R_DYNTRACE_IMAGE_NAME := prlprg/r-dyntrace:r-4.0.2
+
+SSH_IDENTITY_FILE := docker-image/id_rsa
+SSH_LOGIN_FILE := ssh-login-file
+SSH_HOST_PORT := 2222
+SSH := ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $(SSH_HOST_PORT) -l r -i $(SSH_IDENTITY_FILE)
+SSH_NUM_SLOTS := 64
+
+# all hosts
+HOSTS := prl2 prl3 prl4
+# slaves (excluding the one from which we run this make file)
+SLAVES := $(filter-out $(HOSTNAME),$(HOSTS))

@@ -1,0 +1,93 @@
+# -*- mode: makefile -*-
+
+# saner makefile
+THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
+THIS_MAKE := $(MAKE) -C $(CURDIR) -f $(THIS_MAKEFILE)
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
+
+include Makevars
+
+HOSTNAME := $(shell hostname)
+WORKER_NAME := evalr-worker-$(HOSTNAME)
+
+.PHONY: image
+image:
+	$(MAKE) -C docker-image
+
+.PHONY: .refresh-docker-image
+.r-dyntrace-docker-image:
+	-docker rm -f $(WORKER_NAME)
+	-docker rmi -f $(DOCKER_IMAGE_NAME) $(DOCKER_R_DYNTRACE_IMAGE_NAME)
+	$(MAKE) -C $(CURDIR) -f $(THIS_MAKEFILE) image
+
+.PHONY: .node-setup
+.node-setup: image
+	@if [ ! -d $(LIBRARY_DIR) ]; then echo "Library dir: '$(LIBRARY_DIR)' does not exist"; exit 1; fi
+	@if [ ! -d $(CRAN_DIR) ]; then echo "CRAN dir '$(CRAN_DIR)'' does not exist"; exit 1; fi
+	-docker rm -f $(WORKER_NAME) 2>/dev/null
+	docker run \
+      --rm \
+      -t \
+      -d \
+      --name $(WORKER_NAME) \
+      -h $(WORKER_NAME) \
+      -p $(SSH_HOST_PORT):22 \
+      -v "$(CRAN_DIR):$(CRAN_DIR):ro" \
+      -v "$(LIBRARY_DIR):$(LIBRARY_DIR):ro" \
+      -v "$(CURDIR):$(CURDIR)" \
+      -e R_LIBS="$(CURDIR)/library:$(LIBRARY_DIR)" \
+      -e NO_EXEC_SUDO=1 \
+      -e USER_ID=$$(id -u) \
+      -e USER_GID=$$(id -g) \
+      $(DOCKER_IMAGE_NAME) \
+      /usr/sbin/sshd -De
+
+.node-status:
+	-@ppid=$$(pgrep parallel); \
+  tasks=$$([ $$? -eq 0 ] && ps -o pid= --ppid $$ppid | wc -l || echo 0); \
+  load=$$(uptime | sed "s/.*load average: //"); \
+  echo "$(HOSTNAME): load: $$load, tasks: $$tasks"
+
+
+NODES_ALL := $(patsubst %, node/%, $(HOSTS))
+HOSTS_ALL := $(patsubst %, host/%, $(HOSTS))
+HOSTS_SLAVES := $(patsubst %, host/%, $(SLAVES))
+
+# this seemingly empty target is important, because
+# it allows one to use $< in the remore/% target
+$(HOSTS):
+
+ssh/%: %
+	$(SSH) $<
+
+host/%: %
+	@ssh $< $(TARGET)
+
+node/%: %
+	@$(SSH) $< $(TARGET)
+
+.PHONY: hosts-all
+hosts-all: $(HOSTS_ALL)
+
+.PHONY: hosts-slaves
+hosts-slaves: $(HOSTS_SLAVES)
+
+.PHONY: nodes-all
+nodes-all: $(NODES_ALL)
+
+.PHONY: r-dyntrace-docker-image
+r-dyntrace-docker-image: TARGET=$(THIS_MAKE) .r-dyntrace-docker-image
+r-dyntrace-docker-image: hosts-slaves
+
+.PHONY: node-setup
+node-setup: TARGET=$(THIS_MAKE) .node-setup
+node-setup: hosts-all
+
+.PHONY: node-status
+node-status: TARGET=$(THIS_MAKE) .node-status
+node-status: nodes-all
+
+$(SSH_LOGIN_FILE):
+	-@rm -f $(SSH_LOGIN_FILE)
+	@$(foreach host,$(HOSTS),echo "$(SSH_NUM_SLOTS)/$(SSH) $(host)" >> $(SSH_LOGIN_FILE);)
