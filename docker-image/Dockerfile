@@ -11,8 +11,11 @@ RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
 
 ENV LANG en_US.UTF-8
 
-# TODO not sure why do I need to set it up manually
-RUN mkdir -p /run/sshd
+# TODO not sure why do I need to create the directory manually
+RUN mkdir -p /run/sshd && \
+  sed -ri 's/^#?MaxStartups\s+.*/MaxStartups 100:30:1000/' /etc/ssh/sshd_config && \
+  sed -ri 's/^#?MaxSessions\s+.*/MaxSessions 100/' /etc/ssh/sshd_config && \
+  sed -ri 's/^#?X11Forwarding\s+.*/X11Forwarding no/' /etc/ssh/sshd_config
 
 # latest GNU parallel
 RUN mkdir parallel && \

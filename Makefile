@@ -6,7 +6,7 @@ include Makevars
 
 # extra parameters
 PACKAGES_FILE ?= package-8.txt
-JOBS          ?= 192
+JOBS          ?= 1
 TIMEOUT       ?= 30m
 
 PROJECT_BASE_DIR ?= /mnt/ocfs_vol_00/project-evalr
@@ -27,11 +27,14 @@ DATA_DIR           := $(CURDIR)/data
 # remote execution
 ifeq ($(CLUSTER), 1)
     MAP_EXTRA=--sshloginfile $(SSH_LOGIN_FILE)
+    JOBS=100%
 endif
 
 # tools
-MAP := $(RUNR_DIR)/inst/map.sh -j $(JOBS) -t $(TIMEOUT) $(MAP_EXTRA)
-MERGE_CSV := $(R_DIR)/bin/Rscript $(RUNR_DIR)/inst/merge-csv.R
+MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) -t $(TIMEOUT) $(MAP_EXTRA)
+R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
+RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
+MERGE_CSV := $(RSCRIPT) $(RUNR_DIR)/inst/merge-csv.R
 
 ## tasks outputs
 
@@ -74,7 +77,7 @@ libs: lib/injectr lib/instrumentr lib/runr lib/evil
 # 	$(MERGE_CSV) "$(OUTPUT_DIR)" $(@F) $(notdir $(SIGNATR_GBOV_STATS))
 
 $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS):
-	$(MAP) -f $(PACKAGES_FILE) -o $(PACKAGE_COVERAGE_DIR) -e $(RUNR_TASKS_DIR)/package-coverage.R -- $(CRAN_DIR)/extracted/{1}
+	-$(MAP) -f $(PACKAGES_FILE) -o $(PACKAGE_COVERAGE_DIR) -e $(RUNR_TASKS_DIR)/package-coverage.R -- $(CRAN_DIR)/extracted/{1} --type all
 	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_COVERAGE_STATS))
 
 $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS):

@@ -83,6 +83,12 @@ r-dyntrace-docker-image: hosts-slaves
 .PHONY: node-setup
 node-setup: TARGET=$(THIS_MAKE) .node-setup
 node-setup: hosts-all
+	if tmux list-windows -F "#W" | grep cluster >/dev/null 2>&1; then tmux kill-window -t cluster; else true; fi
+	tmux new-window -n cluster -d
+	sleep 1
+	$(foreach host,$(HOSTS),tmux split-window -d -t cluster $(THIS_MAKE) node/$(host) SSH_EXTRA="-MT";)
+	tmux kill-pane -t cluster.1
+	tmux select-layout -t cluster even-vertical
 
 .PHONY: node-status
 node-status: TARGET=$(THIS_MAKE) .node-status
