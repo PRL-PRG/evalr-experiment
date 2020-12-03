@@ -98,3 +98,10 @@ po/*~
 /signatr/
 packages-*.txt
 /ssh-login-file
+/evil/
+/revalstudy/
+/temp/
+/client-code-packages.txt
+/client-code.txt
+/corpus-stage2-revdeps.txt
+/corpus-stage2.txt
