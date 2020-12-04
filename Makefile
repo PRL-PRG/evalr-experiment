@@ -82,6 +82,11 @@ PACKAGE_CODE_RUN_STATS := $(PACKAGE_CODE_RUN_DIR)/task-stats.csv
 TRACE_EVAL_DIR := $(RUN_DIR)/trace-eval
 TRACE_EVAL_STATS := $(TRACE_EVAL_DIR)/task-stats.csv
 
+# static eval
+PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
+PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/task-stats.csv
+PACKAGE_EVALS_STATIC_CSV		:= $(PACKAGE_EVALS_STATIC_DIR)/package-evals-static.csv
+
 .PHONY: \
   lib \
 	libs \
@@ -90,6 +95,7 @@ TRACE_EVAL_STATS := $(TRACE_EVAL_DIR)/task-stats.csv
   package-runnable-code \
   package-runnable-code-eval \
   package-code-run \
+  package-evals-static \
   trace-eval
 
 lib/%:
@@ -134,16 +140,21 @@ $(PACKAGE_CODE_RUN_STATS): $(PACKAGE_RUNNABLE_CODE_CSV)
     head -10 | \
     $(MAP) -f - -o $(@D) --no-exec-wrapper -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
+$(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
+	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-evals-static.R
+	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_EVALS_STATIC_STATS))
+
 $(TRACE_EVAL_STATS): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	csvcut -c package,file $< --no-header-row | \
     head -10 | \
-    $(MAP) -f - -o $(@D) --no-exec-wrapper -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
+    $(MAP) -j 75% -f - -o $(@D) --no-exec-wrapper -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
 package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 package-code-run: $(PACKAGE_CODE_RUN_STATS)
+package-evals-static: $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS)
 corpus: $(CORPUS_S2) $(CORPUS_S2_DETAILS) $(CORPUS_ALL_DETAILS)
 trace-eval: $(TRACE_EVAL_STATS)
 
