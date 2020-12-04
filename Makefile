@@ -10,9 +10,10 @@ JOBS          ?= 1
 TIMEOUT       ?= 30m
 CORPUS_SIZE   ?= 500
 
-CORPUS_S1         := corpus-stage1.txt
-CORPUS_S2         := corpus-stage2.txt
-CORPUS_S2_REVDEPS := corpus-stage2-revdeps.txt
+CORPUS_S1          := corpus-stage1.txt
+CORPUS_S2          := corpus-stage2.txt
+CORPUS_S2_DETAILS  := corpus-stage2.fst
+CORPUS_ALL_DETAILS := corpus-all.fst
 
 PROJECT_BASE_DIR ?= /mnt/ocfs_vol_00/project-evalr
 RUN_DIR          ?= $(CURDIR)/run
@@ -73,10 +74,6 @@ PACKAGE_RUNNABLE_CODE_EVAL_DIR		:= $(RUN_DIR)/package-runnable-code-eval
 PACKAGE_RUNNABLE_CODE_EVAL_CSV		:= $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-code.csv
 PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/task-stats.csv
 
-# client code
-CLIENT_CODE_PACKAGES := client-code-packages.txt
-CLIENT_CODE_FILE ?= client-code.txt
-
 # code run
 PACKAGE_CODE_RUN_DIR := $(RUN_DIR)/package-code-run
 PACKAGE_CODE_RUN_STATS := $(PACKAGE_CODE_RUN_DIR)/task-stats.csv
@@ -100,22 +97,18 @@ lib/%:
 
 libs: lib/injectr lib/instrumentr lib/runr lib/evil
 
-$(CORPUS_S2) $(CORPUS_S2_REVDEPS): $(PACKAGE_REVDEPS_CSV) $(PACKAGE_COVERAGE_CSV)
+$(CORPUS_S2) $(CORPUS_S2_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_COVERAGE_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	$(RSCRIPT) $(SCRIPTS_DIR)/corpus-stage2.R \
-    --coverage $(PACKAGE_COVERAGE_CSV) \
-    --revdeps $(PACKAGE_REVDEPS_CSV) \
     --num $(CORPUS_SIZE) \
-    --out-packages $(CORPUS_S2) \
-    --out-revdeps $(CORPUS_S2_REVDEPS)
-
-$(CLIENT_CODE_PACKAGES): $(CORPUS_S2) $(CORPUS_S2_REVDEPS)
-	cat $(CORPUS_S2) $(CORPUS_S2_REVDEPS) > $(CLIENT_CODE_PACKAGES)
-
-$(CLIENT_CODE_FILE): $(CLIENT_CODE_PACKAGES) $(PACKAGE_RUNNABLE_CODE_CSV)
-	$(RSCRIPT) $(SCRIPTS_DIR)/client-code.R \
-    --runnable-code $(PACKAGE_RUNNABLE_CODE_CSV) \
-    --packages $(CLIENT_CODE_PACKAGES) \
-    --out $(CLIENT_CODE_FILE)
+    --metadata $(PACKAGE_METADATA_CSV) \
+    --functions $(PACKAGE_FUNCTIONS_CSV) \
+    --revdeps $(PACKAGE_REVDEPS_CSV) \
+    --sloc $(PACKAGE_SLOC_CSV) \
+    --coverage $(PACKAGE_COVERAGE_CSV) \
+    --runnable-code $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) \
+    --out-corpus $(CORPUS_S2) \
+    --out-corpus-details $(CORPUS_S2_DETAILS) \
+    --out-all-details $(CORPUS_ALL_DETAILS)
 
 $(PACKAGES_CRAN_FILE):
 	$(RSCRIPT) -e 'writeLines(setdiff(installed.packages()[, 1], readLines("$(PACKAGES_CORE_FILE)")), "$@")'
@@ -136,19 +129,22 @@ $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R -- $(CRAN_DIR)/extracted/{1} --wrap $(SCRIPTS_DIR)/eval-tracer-template.R
 	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_RUNNABLE_CODE_EVAL_STATS))
 
-$(PACKAGE_CODE_RUN_STATS): $(CLIENT_CODE_FILE)
-	$(MAP) -f $(CLIENT_CODE_FILE) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
-#	$(MAP) -f $(CLIENT_CODE_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/run-file.R -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
+$(PACKAGE_CODE_RUN_STATS): $(PACKAGE_RUNNABLE_CODE_CSV)
+	csvcut -c package,file $< --no-header-row | \
+    head -10 | \
+    $(MAP) -f - -o $(@D) --no-exec-wrapper -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
-$(TRACE_EVAL_STATS): $(CLIENT_CODE_FILE)
-	EVAL_PACKAGES_FILE=$(realpath $(CORPUS_S2)) \
-  $(MAP) --env EVAL_PACKAGES_FILE -f $(CLIENT_CODE_FILE) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
+$(TRACE_EVAL_STATS): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
+	csvcut -c package,file $< --no-header-row | \
+    head -10 | \
+    $(MAP) -f - -o $(@D) --no-exec-wrapper -e $(SCRIPTS_DIR)/run-r-file.sh -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
 package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 package-code-run: $(PACKAGE_CODE_RUN_STATS)
+corpus: $(CORPUS_S2) $(CORPUS_S2_DETAILS) $(CORPUS_ALL_DETAILS)
 trace-eval: $(TRACE_EVAL_STATS)
 
 .PHONY: local-env
