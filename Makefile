@@ -70,12 +70,12 @@ PACKAGE_RUNNABLE_CODE_CSV		:= $(PACKAGE_RUNNABLE_CODE_DIR)/runnable-code.csv
 PACKAGE_RUNNABLE_CODE_STATS := $(PACKAGE_RUNNABLE_CODE_DIR)/task-stats.csv
 
 # runnable code eval
-PACKAGE_RUNNABLE_CODE_EVAL_DIR		:= $(RUN_DIR)/package-runnable-code-eval
-PACKAGE_RUNNABLE_CODE_EVAL_CSV		:= $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-code.csv
+PACKAGE_RUNNABLE_CODE_EVAL_DIR	 := $(RUN_DIR)/package-runnable-code-eval
+PACKAGE_RUNNABLE_CODE_EVAL_CSV	 := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-code.csv
 PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/task-stats.csv
 
 # code run
-PACKAGE_CODE_RUN_DIR := $(RUN_DIR)/package-code-run
+PACKAGE_CODE_RUN_DIR   := $(RUN_DIR)/package-code-run
 PACKAGE_CODE_RUN_STATS := $(PACKAGE_CODE_RUN_DIR)/task-stats.csv
 
 # code run eval
