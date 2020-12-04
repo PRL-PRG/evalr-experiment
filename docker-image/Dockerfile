@@ -14,7 +14,7 @@ ENV LANG en_US.UTF-8
 # TODO not sure why do I need to create the directory manually
 RUN mkdir -p /run/sshd && \
   sed -ri 's/^#?MaxStartups\s+.*/MaxStartups 100:30:1000/' /etc/ssh/sshd_config && \
-  sed -ri 's/^#?MaxSessions\s+.*/MaxSessions 100/' /etc/ssh/sshd_config && \
+  sed -ri 's/^#?MaxSessions\s+.*/MaxSessions 500/' /etc/ssh/sshd_config && \
   sed -ri 's/^#?X11Forwarding\s+.*/X11Forwarding no/' /etc/ssh/sshd_config
 
 # latest GNU parallel
