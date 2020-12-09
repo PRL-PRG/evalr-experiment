@@ -87,12 +87,20 @@ process_runnable_code <- function(raw) {
     ungroup()
 }
 
+process_static_evals <- function(raw) {
+  raw %>%
+    count(package, fun_name) %>%
+    group_by(package) %>%
+    summarise(funs_with_eval=length(unique(fun_name)), evals=sum(n))
+}
+
 run <- function(metadata_file,
                 functions_file,
                 sloc_file,
                 revdeps_file,
                 coverage_file,
                 runnable_code_file,
+                evals_static_file,
                 num,
                 out_corpus_file,
                 out_corpus_details_file,
@@ -104,20 +112,25 @@ run <- function(metadata_file,
   revdeps <- process_revdeps(read_csv(revdeps_file))
   coverage <- process_coverage(read_csv(coverage_file))
   runnable_code <- process_runnable_code(read_csv(runnable_code_file))
+  evals_static <- process_evals_static(read_csv(evals_static_file))
 
   all <- metadata %>%
     left_join(functions, by="package") %>%
     left_join(sloc, by="package") %>%
     left_join(revdeps, by="package") %>%
     left_join(coverage, by="package") %>%
-    left_join(runnable_code, by="package")
+    left_join(runnable_code, by="package") %>%
+    left_join(evals_static, by="package")
 
-  corpus <-
+  corpus <- if (file.exists(out_corpus_file)) {
+    semi_join(all, tibble(package=readLines(out_corpus_file)), by="package")
+  } else {
     all %>%
-    filter(loadable, coverage_expr > 0) %>%
-    top_n(opts$num, revdeps) %>%
-    arrange(desc(revdeps), desc(coverage_expr)) %>%
-    head(num)
+      filter(loadable, coverage_expr > 0) %>%
+      top_n(opts$num, revdeps) %>%
+      arrange(desc(revdeps), desc(coverage_expr)) %>%
+      head(num)
+  }
 
   write_lines(corpus$package, out_corpus_file)
   write_fst(corpus, out_corpus_details_file)
@@ -125,6 +138,8 @@ run <- function(metadata_file,
 }
 
 option_list <- list(
+  make_option("--num", help="Number of packages",
+              metavar="NUM", type="integer"),
   make_option("--metadata", help="File with metadata",
               dest="metadata_file", metavar="FILE"),
   make_option("--functions", help="File with metadata",
@@ -137,8 +152,8 @@ option_list <- list(
               dest="coverage_file", metavar="FILE"),
   make_option("--runnable-code", help="File with runnable code",
               dest="runnable_code_file", metavar="FILE"),
-  make_option("--num", help="Number of packages",
-              metavar="NUM", type="integer"),
+  make_option("--evals-static", help="File with evals static",
+              dest="evals_static_file", metavar="FILE"),
   make_option("--out-corpus", help="Output corpus.txt file",
               dest="out_corpus_file", metavar="FILE"),
   make_option("--out-corpus-details", help="Output corpus.fst file",

@@ -15,7 +15,7 @@ WORKER_NAME := evalr-worker-$(HOSTNAME)
 image:
 	$(MAKE) -C docker-image
 
-.PHONY: .refresh-docker-image
+.PHONY: .r-dyntrace-docker-image
 .r-dyntrace-docker-image:
 	-docker rm -f $(WORKER_NAME)
 	-docker rmi -f $(DOCKER_IMAGE_NAME) $(DOCKER_R_DYNTRACE_IMAGE_NAME)
