@@ -111,7 +111,7 @@ lib/%:
 libs: lib/injectr lib/instrumentr lib/runr lib/evil
 
 $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_COVERAGE_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_EVALS_STATIC_CSV)
-	$(RSCRIPT) $(SCRIPTS_DIR)/corpus-stage2.R \
+	$(RSCRIPT) $(SCRIPTS_DIR)/corpus.R \
     --num $(CORPUS_SIZE) \
     --metadata $(PACKAGE_METADATA_CSV) \
     --functions $(PACKAGE_FUNCTIONS_CSV) \

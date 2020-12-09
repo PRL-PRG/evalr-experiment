@@ -87,7 +87,7 @@ process_runnable_code <- function(raw) {
     ungroup()
 }
 
-process_static_evals <- function(raw) {
+process_evals_static <- function(raw) {
   raw %>%
     count(package, fun_name) %>%
     group_by(package) %>%
