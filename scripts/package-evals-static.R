@@ -68,12 +68,13 @@ process_fun <- function(fun, fun_name) {
   search_function_calls(body(fun), functions=FUNCTIONS)
 }
 
-run_package <- function(package, options) {
-  ns <- if (is.environment(package)) {
-          package
-        } else {
-          getNamespace(package)
-        }
+run_package <- function(package, out_file) {
+  ns <-
+    if (is.environment(package)) {
+      package
+    } else {
+      getNamespace(package)
+    }
 
   ns <- as.list(ns)
   funs <- keep(ns, is.function)
@@ -82,16 +83,18 @@ run_package <- function(package, options) {
 
   df <- imap_dfr(calls, make_rows)
 
-  if (nrow(df) > 0) {
-    write.csv(df, options$out_file, row.names=FALSE)
+  if (nrow(df) > 0 && !is.null(out_file)) {
+    write.csv(df, out_file, row.names=FALSE)
   }
+
+  df
 }
 
-run_file <- function(file, options) {
+run_file <- function(file, out_file) {
   env <- new.env(parent=emptyenv())
   ast <- parse(file)
   env$main <- as.function(list(ast))
-  run_package(env, options)
+  run_package(env, out_file)
 }
 
 option_list <- list(
@@ -115,9 +118,11 @@ if (length(opts$args) != 1) {
   stop("Missing package name or filename")
 }
 
+out_file <- opts$options$out_file
+
 switch(
   opts$options$type,
-  package=run_package(opts$args, opts$options),
-  file=run_file(opts$args, opts$options),
+  package=run_package(opts$args, out_file),
+  file=run_file(opts$args, out_file),
   stop("Type must be a 'package' or a 'file'")
 )
