@@ -24,7 +24,7 @@ dir=$(dirname "$1")
 output="$cwd/task-output.txt"
 
 cd "$dir"
-R -f "$file" --no-save --quiet --no-readline >> "$output" 2>&1
+timeout 30m R -f "$file" --no-save --quiet --no-readline >> "$output" 2>&1
 exitval=$?
 
 echo "running: $0 $@" >> $output
