@@ -1,0 +1,42 @@
+COMPETITIONS := allstate-claims-severity \
+ bnp-paribas-cardif-claims-management \
+ data-science-for-good-city-of-los-angeles \
+ digit-recognizer \
+ elo-merchant-category-recommendation \
+ favorita-grocery-sales-forecasting \
+ forest-cover-type-prediction \
+ ghouls-goblins-and-ghosts-boo \
+ grupo-bimbo-inventory-demand \
+ home-credit-default-risk \
+ house-prices-advanced-regression-techniques \
+ introducing-kaggle-scripts \
+ kkbox-churn-prediction-challenge \
+ kkbox-music-recommendation-challenge \
+ leaf-classification \
+ liberty-mutual-group-property-inspection-prediction \
+ mercedes-benz-greener-manufacturing \
+ NFL-Punt-Analytics-Competition \
+ petfinder-adoption-prediction \
+ PLAsTiCC-2018 \
+ porto-seguro-safe-driver-prediction \
+ predict-west-nile-virus \
+ pubg-finish-placement-prediction \
+ quora-insincere-questions-classification \
+ santander-product-recommendation \
+ santas-uncertain-bags \
+ sberbank-russian-housing-market \
+ titanic \
+ ultrasound-nerve-segmentation \
+ zillow-prize-1
+
+KAGGLE := ~/.local/bin/kaggle
+
+.PHONY: all
+all: $(COMPETITIONS)
+
+%: %.zip
+	mkdir $@
+	unzip $< -d $@
+
+%.zip:
+	$(KAGGLE) competitions download -c $(basename $@)

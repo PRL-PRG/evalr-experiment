@@ -16,7 +16,7 @@ PACKAGES_CRAN_FILE  := packages-cran.txt
 # extra parameters
 PACKAGES_FILE ?= $(PACKAGES_CRAN_FILE)
 JOBS          ?= 1
-TIMEOUT       ?= 30m
+TIMEOUT       ?= 35m
 CORPUS_SIZE   ?= 500
 
 PROJECT_BASE_DIR   ?= /mnt/ocfs_vol_00/project-evalr
@@ -44,7 +44,10 @@ endif
 MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) -t $(TIMEOUT) $(MAP_EXTRA)
 R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
 RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
-MERGE_CSV := $(RSCRIPT) $(RUNR_DIR)/inst/merge-csv.R
+MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
+
+TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
+KAGGLE_TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/kaggle-trace-eval-wrap-template.R
 
 ## tasks outputs
 
@@ -86,12 +89,27 @@ PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
 PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/task-stats.csv
 PACKAGE_EVALS_STATIC_CSV		:= $(PACKAGE_EVALS_STATIC_DIR)/package-evals-static.csv
 
-KAGGLE_KORPUS_DIR := $(RUN_DIR)/kaggle-korpus/notebooks/r/kernels
+KAGGLE_KORPUS_DIR						:= $(RUN_DIR)/kaggle-korpus/notebooks/r/kernels
+KAGGLE_KORPUS_METADATA_CSV  := $(KAGGLE_KORPUS_DIR)/kernels-metadata.csv
+KAGGLE_DATASET_DIR					:= $(RUN_DIR)/kaggle-dataset
 
 KAGGLE_KERNELS_DIR							:= $(RUN_DIR)/kaggle-kernels
+KAGGLE_KERNELS_R								:= $(KAGGLE_KERNELS_DIR)/kernel.R
 KAGGLE_KERNELS_CSV							:= $(KAGGLE_KERNELS_DIR)/kernel.csv
 KAGGLE_KERNELS_EVALS_STATIC_CSV := $(KAGGLE_KERNELS_DIR)/kaggle-evals-static.csv
 KAGGLE_KERNELS_STATS						:= $(KAGGLE_KERNELS_DIR)/task-stats.csv
+KAGGLE_KERNELS_TO_RUN_CSV       := $(KAGGLE_KERNELS_DIR)/kernels-to-run.csv
+
+TRACE_EVAL_RESULTS := calls.fst \
+  code.fst \
+  dependencies.fst \
+  lookups.fst \
+  reflection.fst \
+  side-effects.fst
+
+KAGGLE_TRACE_EVAL_DIR   := $(RUN_DIR)/kaggle-trace-eval
+KAGGLE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
+KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 
 .PHONY: \
   lib \
@@ -129,41 +147,68 @@ $(PACKAGES_CRAN_FILE):
 
 $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R -- $(CRAN_DIR)/extracted/{1} --type all
-	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_COVERAGE_STATS))
+	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_COVERAGE_STATS))
 
 $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS):
 	$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-metadata.R -- $(CRAN_DIR)/extracted/{1}
-	$(MERGE_CSV) $(@D) $(notdir $(PACKAGE_METADATA_FILES)) $(notdir $(PACKAGE_METADATA_STATS))
+	$(MERGE) $(@D) $(notdir $(PACKAGE_METADATA_FILES)) $(notdir $(PACKAGE_METADATA_STATS))
 
 $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R
-	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_EVALS_STATIC_STATS))
+	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_EVALS_STATIC_STATS))
 
 $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R -- $(CRAN_DIR)/extracted/{1}
-	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_RUNNABLE_CODE_STATS))
+	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_RUNNABLE_CODE_STATS))
 
 $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R -- $(CRAN_DIR)/extracted/{1} --wrap $(SCRIPTS_DIR)/eval-tracer-template.R
-	$(MERGE_CSV) $(@D) $(@F) $(notdir $(PACKAGE_RUNNABLE_CODE_EVAL_STATS))
+	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
+    -- $(CRAN_DIR)/extracted/{1} --wrap $(TRACE_EVAL_WRAP_TEMPLATE_FILE)
+	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_RUNNABLE_CODE_EVAL_STATS))
 
 $(PACKAGE_CODE_RUN_STATS): $(PACKAGE_RUNNABLE_CODE_CSV)
 	-csvcut -c package,file $< | \
-    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh \
-    --csv --skip-first-line --no-exec-wrapper \
+    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+    --csv --skip-first-line \
     -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}/{2}
 
 $(TRACE_EVAL_STATS): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-csvcut -c package,file $< | \
-    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh \
-    --csv --skip-first-line --no-exec-wrapper \
+    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+    --csv --skip-first-line \
     -- $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}/{2}
 
-$(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_DIR)
-	-ls -1 $(KAGGLE_KORPUS_DIR) | \
-    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/kaggle.sh \
-    -- $(KAGGLE_KORPUS_DIR)/{1}
-	$(MERGE_CSV) $(@D) $(@F) $(notdir $(KAGGLE_KERNELS_EVALS_STATIC_CSV)) $(notdir $(KAGGLE_KERNELS_STATS))
+$(KAGGLE_KORPUS_METADATA_CSV): $(KAGGLE_KORPUS_DIR)
+	$(SCRIPTS_DIR)/kaggle-metadata-json2csv.R $(KAGGLE_KORPUS_DIR) $(KAGGLE_KORPUS_METADATA_CSV)
+
+$(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_METADATA_CSV)
+	-csvcut -c competition,id $< | \
+     $(MAP) -f - -o $(@D) -w $(@D)/{1}/{2} -e $(SCRIPTS_DIR)/kaggle.sh \
+     --csv --skip-first-line --shuf \
+     -- $(KAGGLE_KORPUS_DIR)/{2}/script/kernel-metadata.json \
+        $(notdir $(KAGGLE_KERNELS_R)) \
+        $(notdir $(KAGGLE_KERNELS_CSV)) \
+        $(notdir $(KAGGLE_KERNELS_EVALS_STATIC_CSV)) \
+				$(KAGGLE_TRACE_EVAL_WRAP_TEMPLATE_FILE)
+	$(MERGE) --in $(@D) --csv-cols "iciic" --key "package" --key-use-dirname $(@F)
+	fd --type d --max-depth 1 . $(KAGGLE_DATASET_DIR) -x ln -sfT {} $(KAGGLE_KERNELS_DIR)/{/}/input
+
+$(KAGGLE_KERNELS_CSV): $(KAGGLE_KERNELS_STATS)
+	$(MERGE) --in $(@D) --csv-cols "ccccciiic" --key "package" --key-use-dirname $(@F)
+
+$(KAGGLE_KERNELS_EVALS_STATIC_CSV): $(KAGGLE_KERNELS_STATS)
+	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
+
+$(KAGGLE_KERNELS_TO_RUN_CSV): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
+	$(SCRIPTS_DIR)/kaggle-scripts-to-run.R --metadata $(KAGGLE_KERNELS_CSV) --evals-static $(KAGGLE_KERNELS_EVALS_STATIC_CSV) > $@
+
+$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_KERNELS_TO_RUN_CSV) $(KAGGLE_DATASET_DIR)
+	-$(MAP) -f $(KAGGLE_KERNELS_TO_RUN_CSV) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh \
+    --csv --no-exec-wrapper \
+    -- $(KAGGLE_KERNELS_DIR)/{1}/{2}/kernel.R
+
+$(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
+	$(MERGE) --in $(@D) $(@F)
 
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
@@ -174,6 +219,7 @@ package-evals-static: $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS)
 corpus: $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS)
 trace-eval: $(TRACE_EVAL_STATS)
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
+kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
 
 .PHONY: local-env
 local-env:

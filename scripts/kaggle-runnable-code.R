@@ -1,62 +1,87 @@
 #!/usr/bin/env Rscript
 
+library(fs)
+library(optparse)
 library(rjson)
 library(runr)
 library(stringr)
 
-extract_kernel_code <- function(source_file, target_file) {
-  if (str_ends(source_file, "\\.[rR]$")) {
-    file.copy(source_file, target_file, overwrite=TRUE)
-  } else if (str_ends(source_file, "\\.Rmd")) {
-    knitr::purl(source_file, target_file, quiet=TRUE)
-  } else if (str_ends(source_file, "\\.irnb") || str_ends(source_file, "\\.ipynb")) {
-    tmp <- tempfile(fileext = "Rmd")
-    rmarkdown:::convert_ipynb(source_file, tmp)
-    knitr::purl(tmp, target_file, quiet=TRUE)
-  } else {
-    stop("Unsupported file type: ", source_file)
+run <- function(metadata_json_file, metadata_file, code_file, wrap_template_file) {
+  if (file.access(metadata_json_file, 4) != 0) {
+    stop(metadata_json_file, ": cannot access")
   }
 
-  ## if (file.exists(target_file)) {
-  ##   tmp <- read_file(target_file)
-  ##   tmp <- wrap(target_file, tmp)
-  ##   write_file(tmp, target_file)
-  ## }
+  source_path <- dirname(metadata_json_file)
 
-  target_file
-}
-
-run <- function(path) {
-  metadata_file <- file.path(path, "script", "kernel-metadata.json")
-  if (file.access(metadata_file, 4) != 0) {
-    stop(metadata_file, ": cannot access")
-  }
-
-  metadata <- fromJSON(file=metadata_file)
-  metadata_df <- data.frame(
-    id=str_replace(metadata$id, "/", "-"),
-    language=metadata$language,
-    kernel_type=metadata$kernel_type,
-    competition=metadata$competition
+  metadata_json <- fromJSON(file=metadata_json_file)
+  metadata <- data.frame(
+    id=str_replace(metadata_json$id, "/", "-"),
+    language=metadata_json$language,
+    kernel_type=metadata_json$kernel_type,
+    competition=metadata_json$competition
   )
 
-  source_file <- file.path(path, "script", metadata$code_file)
-  target_file <- "kernel.R"
+  target_path <- getwd() #file.path(metadata$competition, metadata$id)
+  fs::dir_copy(source_path, target_path, overwrite = TRUE)
 
-  df <- tryCatch({
-    extract_kernel_code(source_file, target_file)
-    sloc_df <- runr::cloc(target_file, by_file=TRUE, r_only=TRUE)
-    cbind(metadata_df, subset(sloc_df, select=c(-language, -filename)), error=NA)
-  }, error=function(e) {
-    cbind(metadata_df, error=e$message)
-  })
+  source_code_file <- file.path(source_path, metadata_json$code_file)
+  code_file <- file.path(target_path, "kernel.R")
 
-  write.csv(df, "kernel.csv", row.names=FALSE)
+  runr::extract_kaggle_code(source_code_file, code_file)
+
+  sloc_df <- runr::cloc(code_file, by_file=TRUE, r_only=TRUE)
+
+  hash <- runr::file_sha1(code_file)
+
+  if (!is.null(wrap_template_file)) {
+    runr::wrap_files(
+      package=metadata$id,
+      file=code_file,
+      type="kaggle",
+      wrap_fun=runr::wrap_using_template(runr::read_file(wrap_template_file)),
+      quiet=FALSE
+    )
+  }
+
+  df <- cbind(
+    file=code_file,
+    metadata,
+    subset(sloc_df, select=c(-language, -filename)),
+    hash
+  )
+
+  write.csv(df, metadata_file, row.names=FALSE)
 }
 
-args <- commandArgs(trailingOnly=TRUE)
-if (length(args) != 1) {
-  stop("Missing path to a kaggle kernel")
-}
+option_list <- list(
+  make_option(
+    c("--kernel"),
+    help="Kaggle kernel-metadata.json",
+    dest="metadata_json_file", metavar="FILE"
+  ),
+  make_option(
+    c("--metadata"),
+    help="CSV metadata output",
+    dest="metadata_file", metavar="FILE"
+  ),
+  make_option(
+    c("--code"),
+    help="Kernel code output",
+    dest="code_file", metavar="FILE"
+  ),
+  make_option(
+    c("--wrap"),
+    help="Wrap code file using the given template",
+    dest="wrap_template_file", metavar="FILE"
+  )
+)
 
-run(args[1])
+opt_parser <- OptionParser(option_list=option_list)
+opts <- parse_args(opt_parser)
+
+run(
+  metadata_json_file=opts$metadata_json_file,
+  metadata_file=opts$metadata_file,
+  code_file=opts$code_file,
+  wrap_template_file=opts$wrap_template_file
+)
