@@ -56,14 +56,16 @@ make_rows <- function(calls, fun_name) {
 }
 
 process_fun <- function(fun, fun_name) {
-  g <- tryCatch({
-    impute_fun_srcref(fun)
-  }, error=function(e) {
-    message("error in:", fun_name, ":", e$message)
-    fun
-  })
+  ## FIXME: for now we do not do additional srcref imputation
+  ## g <- tryCatch({
+  ##   impute_fun_srcref(fun)
+  ## }, error=function(e) {
+  ##   message("error in:", fun_name, ":", e$message)
+  ##   fun
+  ## })
+  ## search_function_calls(body(g), functions=FUNCTIONS)
 
-  search_function_calls(body(g), functions=FUNCTIONS)
+  search_function_calls(body(fun), functions=FUNCTIONS)
 }
 
 run_package <- function(package, options) {
