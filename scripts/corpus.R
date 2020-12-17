@@ -101,7 +101,6 @@ run <- function(metadata_file,
                 coverage_file,
                 runnable_code_file,
                 evals_static_file,
-                num,
                 out_corpus_file,
                 out_corpus_details_file,
                 out_all_details_file) {
@@ -122,15 +121,10 @@ run <- function(metadata_file,
     left_join(runnable_code, by="package") %>%
     left_join(evals_static, by="package")
 
-  corpus <- if (file.exists(out_corpus_file)) {
-    semi_join(all, tibble(package=readLines(out_corpus_file)), by="package")
-  } else {
+  corpus <-
     all %>%
-      filter(loadable, coverage_expr > 0) %>%
-      top_n(opts$num, revdeps) %>%
-      arrange(desc(revdeps), desc(coverage_expr)) %>%
-      head(num)
-  }
+      filter(loadable, evals > 0) %>%
+      arrange(desc(revdeps), desc(coverage_expr))
 
   write_lines(corpus$package, out_corpus_file)
   write_fst(corpus, out_corpus_details_file)
@@ -138,8 +132,6 @@ run <- function(metadata_file,
 }
 
 option_list <- list(
-  make_option("--num", help="Number of packages",
-              metavar="NUM", type="integer"),
   make_option("--metadata", help="File with metadata",
               dest="metadata_file", metavar="FILE"),
   make_option("--functions", help="File with metadata",
