@@ -1,8 +1,26 @@
-evil::trace_to_file(
-  writer=function(file, df)
-    fst::write_fst(df, file.path(Sys.getenv("RUNR_CWD", getwd()), paste0(gsub("_", "-", file), ".fst"))),
-  packages=readLines("/mnt/ocfs_vol_00/project-evalr/evalr-experiment/corpus.txt"),
-  code={{
-    {body}
-  }}
+stopifnot(!is.null(Sys.getenv("EVALS_TO_TRACE_FILE")))
+
+traces <- evil::trace_code(
+  evals_to_trace=readLines(Sys.getenv("EVALS_TO_TRACE_FILE")),
+  code={
+    .BODY.
+  }
 )
+
+evil::write_trace(
+  traces,
+  function(file, df) {
+    fst::write_fst(
+      df,
+      file.path(Sys.getenv("RUNR_CWD", getwd()), paste0(gsub("_", "-", file), ".fst"))
+    )
+  }
+)
+
+if (instrumentr::is_error(traces$result)) {
+  error <- traces$result$error
+  cat("*** ERROR:", error$message, "\n")
+  cat("*** SOURCE:", error$source, "\n")
+  cat("*** CALL:", format(error$call), "\n")
+  q(status=2, save="no")
+}

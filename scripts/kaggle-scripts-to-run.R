@@ -8,7 +8,7 @@ run <- function(metadata_file, evals_static_file) {
   df <- subset(kernels, package %in% evals$package)
   df <- df[!duplicated(df$hash), ]
 
-  cat(paste(df$competition, df$package, sep=","), sep="\n")
+  cat(paste(df$competition, df$package, sep="/"), sep="\n")
 }
 
 option_list <- list(

@@ -26,8 +26,10 @@ run <- function(metadata_json_file, metadata_file, code_file, wrap_template_file
 
   source_code_file <- file.path(source_path, metadata_json$code_file)
   code_file <- file.path(target_path, "kernel.R")
+  code_file_unwrapped <- file.path(target_path, "kernel-original.R")
 
   runr::extract_kaggle_code(source_code_file, code_file)
+  file.copy(code_file, code_file_unwrapped)
 
   sloc_df <- runr::cloc(code_file, by_file=TRUE, r_only=TRUE)
 

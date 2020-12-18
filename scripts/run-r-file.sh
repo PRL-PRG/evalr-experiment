@@ -1,4 +1,22 @@
-#!/bin/sh
+#!/bin/bash
+
+set -Eeo pipefail
+
+while (( "$#" )); do
+  case "${1-}" in
+    -v | --verbose)
+      VERBOSE=1
+      shift
+      ;;
+    -t | --timeout)
+      TIMEOUT="${2-}"
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 export LANGUAGE=en
 export LC_COLLATE=C
@@ -24,8 +42,20 @@ dir=$(dirname "$1")
 output="$cwd/task-output.txt"
 
 cd "$dir"
-timeout 30m R -f "$file" --no-save --quiet --no-readline >> "$output" 2>&1
-exitval=$?
+
+cmd=""
+
+[ -n "$TIMEOUT" ] && cmd="timeout $TIMEOUT"
+
+cmd="$cmd R -f $file --no-save --quiet --no-readline"
+
+if [ -n "$VERBOSE" ]; then
+    $cmd | tee "$output" 2>&1
+    exitval=$?
+else
+    $cmd >> "$output" 2>&1
+    exitval=$?
+fi
 
 echo "running: $0 $@" >> $output
 echo "exit: $exitval" >> $output
