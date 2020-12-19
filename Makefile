@@ -88,12 +88,14 @@ PACKAGE_RUNNABLE_CODE_EVAL_CSV	 := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-co
 PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/parallel.csv
 
 # code run
-PACKAGE_CODE_RUN_DIR   := $(RUN_DIR)/package-code-run
-PACKAGE_RUN_STATS := $(PACKAGE_CODE_RUN_DIR)/parallel.csv
+PACKAGE_CODE_RUN_DIR := $(RUN_DIR)/package-code-run
+PACKAGE_RUN_STATS    := $(PACKAGE_CODE_RUN_DIR)/parallel.csv
 
 # code run eval
-TRACE_EVAL_DIR   := $(RUN_DIR)/trace-eval
-PACKAGE_TRACE_EVAL_STATS := $(TRACE_EVAL_DIR)/parallel.csv
+PACKAGE_TRACE_EVAL_DIR           := $(RUN_DIR)/trace-eval
+PACKAGE_TRACE_EVAL_STATS := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
+PACKAGE_TRACE_EVAL_FILES := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+PACKAGE_TRACE_EVAL_CALLS := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
 
 BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
 
@@ -105,6 +107,7 @@ BASE_RUN_STATS := $(BASE_RUN_DIR)/parallel.csv
 BASE_TRACE_EVAL_DIR   := $(RUN_DIR)/base-trace-eval
 BASE_PACKAGE_TRACE_EVAL_STATS := $(BASE_TRACE_EVAL_DIR)/parallel.csv
 BASE_TRACE_EVAL_FILES := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+BASE_TRACE_EVAL_CALLS := $(BASE_TRACE_EVAL_DIR)/calls.fst
 
 # static eval
 PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
@@ -128,6 +131,7 @@ KAGGLE_RUN_STATS := $(KAGGLE_RUN_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_DIR   := $(RUN_DIR)/kaggle-trace-eval
 KAGGLE_PACKAGE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+KAGGLE_TRACE_EVAL_CALLS := $(KAGGLE_TRACE_EVAL_DIR)/calls.fst
 
 LIBS: lib/injectr lib/instrumentr lib/runr lib/evil
 
@@ -146,7 +150,8 @@ LIBS: lib/injectr lib/instrumentr lib/runr lib/evil
   kaggle-run \
   kaggle-trace-eval \
   base-run \
-  base-trace-eval
+  base-trace-eval \
+	preprocess
 
 lib/%:
 	$(MAKE) -C $(@F) install
@@ -304,13 +309,45 @@ $(KAGGLE_RUN_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -f $(KAGGLE_KERNELS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
 
-$(KAGGLE_PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE="global"
-$(KAGGLE_PACKAGE_TRACE_EVAL_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
+$(KAGGLE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE="global"
+$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -t 1d -f $(KAGGLE_KERNELS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- $(KAGGLE_KERNELS_DIR)/{1}/kernel.R
 
-$(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_PACKAGE_TRACE_EVAL_STATS)
+$(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
 	$(MERGE) --in $(@D) $(@F)
+
+################
+## PREPROCESS ##
+################
+
+PREPROCESS_DIR      := $(RUN_DIR)/preprocess
+SUM_CORE_FILE   	  := $(PREPROCESS_DIR)/summarized-core.fst
+SUM_KAGGLE_FILE 	  := $(PREPROCESS_DIR)/summarized-kaggle.fst
+SUM_PKGS_FILE   	  := $(PREPROCESS_DIR)/summarized-packages.fst
+SUM_RAW_FILE        := $(PREPROCESS_DIR)/raw.fst
+SUM_EXTERNALS_FILE	:= $(PREPROCESS_DIR)/summarized-externals.fst
+SUM_UNDEFINED_FILE  := $(PREPROCESS_DIR)/summarized-evals-undefined.fst
+PREPROCESS_FILES := \
+  $(SUM_CORE_FILE) \
+  $(SUM_KAGGLE_FILE) \
+  $(SUM_PKGS_FILE) \
+  $(SUM_RAW_FILE) \
+  $(SUM_EXTERNALS_FILE) \
+  $(SUM_UNDEFINED_FILE)
+
+$(PREPROCESS_FILES): $(CORPUS_DETAILS) $(PACKAGE_TRACE_EVAL_CALLS) $(KAGGLE_TRACE_EVAL_CALLS)
+	-mkdir -p $(@D)
+	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+    --corpus $(CORPUS_DETAILS) \
+    --calls $(PACKAGE_TRACE_EVAL_CALLS) \
+    --kaggle-calls $(KAGGLE_TRACE_EVAL_CALLS) \
+    --out-undefined $(SUM_UNDEFINED_FILE) \
+    --out-raw $(SUM_RAW_FILE) \
+    --out-summarized-core $(SUM_CORE_FILE) \
+    --out-summarized-pkgs $(SUM_PKGS_FILE) \
+    --out-summarized-kaggle $(SUM_KAGGLE_FILE) \
+    --out-summarized-externals $(SUM_EXTERNALS_FILE)
 
 ###############
 ## Shortcuts ##
@@ -329,6 +366,7 @@ kaggle-run: $(KAGGLE_RUN_STATS)
 kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
 base-run: $(BASE_RUN_STATS)
 base-trace-eval: $(BASE_TRACE_EVAL_FILES)
+preprocess: $(PREPROCESS_FILES)
 
 .PHONY: local-env
 local-env:
