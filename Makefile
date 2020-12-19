@@ -9,11 +9,11 @@ CORPUS_DETAILS     := corpus.fst
 CORPUS_ALL_DETAILS := corpus-all.fst
 
 # the 13 packages that comes with R inc base
-PACKAGES_CORE_FILE  := packages-core.txt
+PACKAGES_CORE_FILE			:= packages-core.txt
 # all additional packages
-PACKAGES_CRAN_FILE  := packages-cran.txt
+PACKAGES_CRAN_FILE			:= packages-cran.txt
 # just base
-PACKAGES_BASE_FILE  := packages-base.txt
+PACKAGES_BASE_FILE			:= packages-base.txt
 
 # extra parameters
 PACKAGES_FILE ?= $(PACKAGES_CRAN_FILE)
@@ -75,35 +75,40 @@ PACKAGE_METADATA_FILES := \
 # coverage
 PACKAGE_COVERAGE_DIR   := $(RUN_DIR)/package-coverage
 PACKAGE_COVERAGE_CSV   := $(PACKAGE_COVERAGE_DIR)/coverage.csv
-PACKAGE_COVERAGE_STATS := $(PACKAGE_COVERAGE_DIR)/task-stats.csv
+PACKAGE_COVERAGE_STATS := $(PACKAGE_COVERAGE_DIR)/parallel.csv
 
 # runnable code
 PACKAGE_RUNNABLE_CODE_DIR		:= $(RUN_DIR)/package-runnable-code
 PACKAGE_RUNNABLE_CODE_CSV		:= $(PACKAGE_RUNNABLE_CODE_DIR)/runnable-code.csv
-PACKAGE_RUNNABLE_CODE_STATS := $(PACKAGE_RUNNABLE_CODE_DIR)/task-stats.csv
+PACKAGE_RUNNABLE_CODE_STATS := $(PACKAGE_RUNNABLE_CODE_DIR)/parallel.csv
 
 # runnable code eval
 PACKAGE_RUNNABLE_CODE_EVAL_DIR	 := $(RUN_DIR)/package-runnable-code-eval
 PACKAGE_RUNNABLE_CODE_EVAL_CSV	 := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-code.csv
-PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/task-stats.csv
+PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/parallel.csv
 
 # code run
 PACKAGE_CODE_RUN_DIR   := $(RUN_DIR)/package-code-run
-PACKAGE_CODE_RUN_STATS := $(PACKAGE_CODE_RUN_DIR)/task-stats.csv
+PACKAGE_RUN_STATS := $(PACKAGE_CODE_RUN_DIR)/parallel.csv
 
 # code run eval
 TRACE_EVAL_DIR   := $(RUN_DIR)/trace-eval
-TRACE_EVAL_STATS := $(TRACE_EVAL_DIR)/task-stats.csv
+PACKAGE_TRACE_EVAL_STATS := $(TRACE_EVAL_DIR)/parallel.csv
+
+BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
+
+# base run
+BASE_RUN_DIR   := $(RUN_DIR)/base-run
+BASE_RUN_STATS := $(BASE_RUN_DIR)/parallel.csv
 
 # base tracing
-BASE_TRACE_EVAL_DIR         := $(RUN_DIR)/base-trace-eval
-BASE_TRACE_EVAL_SCRIPTS_TXT := $(BASE_TRACE_EVAL_DIR)/scripts.txt
-BASE_TRACE_EVAL_STATS       := $(BASE_TRACE_EVAL_DIR)/parallel.csv
+BASE_TRACE_EVAL_DIR   := $(RUN_DIR)/base-trace-eval
+BASE_PACKAGE_TRACE_EVAL_STATS := $(BASE_TRACE_EVAL_DIR)/parallel.csv
 BASE_TRACE_EVAL_FILES := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 
 # static eval
 PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
-PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/task-stats.csv
+PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/parallel.csv
 PACKAGE_EVALS_STATIC_CSV		:= $(PACKAGE_EVALS_STATIC_DIR)/package-evals-static.csv
 
 KAGGLE_KORPUS_DIR						:= $(RUN_DIR)/kaggle-korpus/notebooks/r/kernels
@@ -114,16 +119,17 @@ KAGGLE_KERNELS_DIR							:= $(RUN_DIR)/kaggle-kernels
 KAGGLE_KERNELS_R								:= $(KAGGLE_KERNELS_DIR)/kernel.R
 KAGGLE_KERNELS_CSV							:= $(KAGGLE_KERNELS_DIR)/kernel.csv
 KAGGLE_KERNELS_EVALS_STATIC_CSV := $(KAGGLE_KERNELS_DIR)/kaggle-evals-static.csv
-KAGGLE_KERNELS_STATS						:= $(KAGGLE_KERNELS_DIR)/task-stats.csv
+KAGGLE_KERNELS_STATS						:= $(KAGGLE_KERNELS_DIR)/parallel.csv
 KAGGLE_KERNELS_TO_RUN_TXT       := $(KAGGLE_KERNELS_DIR)/kernels-to-run.txt
-
 
 KAGGLE_RUN_DIR   := $(RUN_DIR)/kaggle-run
 KAGGLE_RUN_STATS := $(KAGGLE_RUN_DIR)/parallel.csv
 
 KAGGLE_TRACE_EVAL_DIR   := $(RUN_DIR)/kaggle-trace-eval
-KAGGLE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
+KAGGLE_PACKAGE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+
+LIBS: lib/injectr lib/instrumentr lib/runr lib/evil
 
 .PHONY: \
   lib \
@@ -132,15 +138,20 @@ KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_
   package-metadata \
   package-runnable-code \
   package-runnable-code-eval \
-  package-code-run \
   package-evals-static \
-  trace-eval \
-  kaggle-kernels
+  corpus \
+  package-run \
+  package-trace-eval \
+  kaggle-kernels \
+  kaggle-run \
+  kaggle-trace-eval \
+  base-run \
+  base-trace-eval
 
 lib/%:
-	R CMD INSTALL $*
+	$(MAKE) -C $(@F) install
 
-libs: lib/injectr lib/instrumentr lib/runr lib/evil
+libs: $(LIBS)
 
 # Output all installed packages except for the ones that are part
 # of R core
@@ -178,9 +189,16 @@ $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(P
     --out-corpus-details $(CORPUS_DETAILS) \
     --out-all-details $(CORPUS_ALL_DETAILS)
 
-$(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R -- $(CRAN_DIR)/extracted/{1} --type all
-	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_COVERAGE_STATS))
+$(PACKAGE_COVERAGE_STATS):
+	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R \
+    --  --type all $(CRAN_DIR)/extracted/{1}
+
+$(PACKAGE_COVERAGE_CSV):
+	$(MERGE) --in $(@D) --csv-cols "ccdd" --key "package" --key-use-dirname $(@F)
+
+################################
+## PACKAGES related targets   ##
+################################
 
 $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R
@@ -189,7 +207,6 @@ $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
 $(PACKAGE_RUNNABLE_CODE_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
     -- $(CRAN_DIR)/extracted/{1}
-	$(MERGE) --in $(@D) --csv-cols "iciic" --key "package" --key-use-dirname $(@F)
 
 $(PACKAGE_RUNNABLE_CODE_CSV): $(PACKAGE_RUNNABLE_CODE_STATS)
 	$(MERGE) --in $(@D) --csv-cols "ccciii" --key "package" --key-use-dirname $(@F)
@@ -197,38 +214,47 @@ $(PACKAGE_RUNNABLE_CODE_CSV): $(PACKAGE_RUNNABLE_CODE_STATS)
 $(PACKAGE_RUNNABLE_CODE_EVAL_STATS):
 	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
     -- $(CRAN_DIR)/extracted/{1} --wrap $(TRACE_EVAL_WRAP_TEMPLATE_FILE)
-	$(MERGE) --in $(@D) --csv-cols "iciic" --key "package" --key-use-dirname $(@F)
 
 $(PACKAGE_RUNNABLE_CODE_EVAL_CSV): $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 	$(MERGE) --in $(@D) --csv-cols "ccciii" --key "package" --key-use-dirname $(@F)
 
-$(PACKAGE_CODE_RUN_STATS): $(PACKAGE_RUNNABLE_CODE_CSV)
-	-csvcut -c package,file $< | \
-    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    --csv --skip-first-line \
+$(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
+	-$(RSCRIPT) -e \
+    'glue::glue("{package}/{file}", read.csv("$<"))' > $@
+
+$(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
+	$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}/{2}
 
-$(TRACE_EVAL_STATS): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
-	-csvcut -c package,file $< | \
-    $(MAP) -f - -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    --csv --skip-first-line \
+$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(CORPUS))
+$(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
+	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+    --env EVALS_TO_TRACE_FILE \
     -- $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}/{2}
+
+$(PACKAGE_TRACE_EVAL_FILES): $(PACKAGE_TRACE_EVAL_STATS)
+	$(MERGE) --in $(@D) $(@F)
 
 ############################
 ## BASE related targets   ##
 ############################
-$(BASE_TRACE_EVAL_SCRIPTS_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
-	-@mkdir -p $(@D)
+$(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
     'glue::glue("{package}/{file}", .envir=subset(read.csv("$<"), package %in% readLines("$(CORPUS)")[1:$(CORPUS_SIZE)]))' > $@
 
-$(BASE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_BASE_FILE))
-$(BASE_TRACE_EVAL_STATS): $(BASE_TRACE_EVAL_SCRIPTS_TXT)
+$(BASE_RUN_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
+$(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
+	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+    --env EVALS_TO_TRACE_FILE \
+    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}/{2}
+
+$(BASE_PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
+$(BASE_PACKAGE_TRACE_EVAL_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}/{2}
 
-$(BASE_TRACE_EVAL_FILES): $(BASE_TRACE_EVAL_STATS)
+$(BASE_TRACE_EVAL_FILES): $(BASE_PACKAGE_TRACE_EVAL_STATS)
 	$(MERGE) --in $(@D) $(@F)
 
 ############################
@@ -263,7 +289,6 @@ $(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_METADATA_CSV)
         $(notdir $(KAGGLE_KERNELS_CSV)) \
         $(notdir $(KAGGLE_KERNELS_EVALS_STATIC_CSV)) \
 				$(TRACE_EVAL_WRAP_TEMPLATE_FILE)
-	$(MERGE) --in $(@D) --csv-cols "iciic" --key "package" --key-use-dirname $(@F)
 	fd --type d --max-depth 1 . $(KAGGLE_DATASET_DIR) -x ln -sfT {} $(KAGGLE_KERNELS_DIR)/{/}/input
 
 $(KAGGLE_KERNELS_CSV): $(KAGGLE_KERNELS_STATS)
@@ -279,31 +304,38 @@ $(KAGGLE_RUN_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -f $(KAGGLE_KERNELS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
 
-$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
+$(KAGGLE_PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE="global"
+$(KAGGLE_PACKAGE_TRACE_EVAL_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -t 1d -f $(KAGGLE_KERNELS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- $(KAGGLE_KERNELS_DIR)/{1}/kernel.R
 
-$(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
+$(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_PACKAGE_TRACE_EVAL_STATS)
 	$(MERGE) --in $(@D) $(@F)
+
+###############
+## Shortcuts ##
+###############
 
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
 package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
-package-code-run: $(PACKAGE_CODE_RUN_STATS)
 package-evals-static: $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS)
 corpus: $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS)
-trace-eval: $(TRACE_EVAL_STATS)
+package-run: $(PACKAGE_RUN_STATS)
+package-trace-eval: $(PACKAGE_TRACE_EVAL_FILES)
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
 kaggle-run: $(KAGGLE_RUN_STATS)
 kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
-base-trace-eval: $(BASE_TRACE_EVAL_STATS)
+base-run: $(BASE_RUN_STATS)
+base-trace-eval: $(BASE_TRACE_EVAL_FILES)
 
 .PHONY: local-env
 local-env:
 	@echo "export R_LIBS=$(LIBRARY_DIR)"
 	@echo "export PATH=$(R_DIR):$$PATH"
 
+.PHONY: rstudio
 rstudio:
 	if [ -z "$$PORT" ]; then echo "Missing PORT"; exit 1; fi
 	docker run \
