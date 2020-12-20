@@ -235,6 +235,7 @@ extract_package_name <- function(src_ref, file) {
     str_starts(src_ref, fixed("./R/")) ~ "core",
     str_starts(src_ref, fixed("/tmp/")) ~ str_match(src_ref, "/tmp.*/Rtmp[^/]*/R\\.INSTALL[^/]*/([^/]+)/R/.*$")[[2]], # path problem here
     str_starts(src_ref, fixed("/mnt/ocfs_vol")) ~ "base", # depends on where the shared is mounted!
+    str_starts(src_ref, fixed("::")) ~ str_match(src_ref, "::([^:]*)::.*")[[2]],
     str_starts(src_ref, fixed("test")) ~ str_match(src_ref, "([^/]*)/.*")[[2]],
     str_starts(src_ref, fixed("/:")) ~ str_match(file, "[^/]*/[^/]*/([^/]*)/.*")[[2]],
     TRUE ~ "unknown"
@@ -587,3 +588,5 @@ if (!length(opts) %in% 2:7) {
 main(opts$corpus, opts$calls_file, opts$evals_undefined_file,
      opts$evals_summarized_file, opts$evals_summarized_externals_file,
      opts$trim_expressions, opts$out_name)
+
+exit(0)
