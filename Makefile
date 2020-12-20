@@ -43,7 +43,7 @@ ifeq ($(CLUSTER), 1)
 endif
 
 # tools
-MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) -t $(TIMEOUT) $(MAP_EXTRA)
+MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
 R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
 RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
 MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
@@ -72,6 +72,11 @@ PACKAGE_METADATA_FILES := \
   $(PACKAGE_REVDEPS_CSV) \
   $(PACKAGE_SLOC_CSV)
 
+# static eval
+PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
+PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/parallel.csv
+PACKAGE_EVALS_STATIC_CSV		:= $(PACKAGE_EVALS_STATIC_DIR)/package-evals-static.csv
+
 # coverage
 PACKAGE_COVERAGE_DIR   := $(RUN_DIR)/package-coverage
 PACKAGE_COVERAGE_CSV   := $(PACKAGE_COVERAGE_DIR)/coverage.csv
@@ -88,32 +93,28 @@ PACKAGE_RUNNABLE_CODE_EVAL_CSV	 := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-co
 PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/parallel.csv
 
 # code run
-PACKAGE_CODE_RUN_DIR := $(RUN_DIR)/package-code-run
+PACKAGE_CODE_RUN_DIR := $(RUN_DIR)/package-run
 PACKAGE_RUN_STATS    := $(PACKAGE_CODE_RUN_DIR)/parallel.csv
 
 # code run eval
-PACKAGE_TRACE_EVAL_DIR           := $(RUN_DIR)/trace-eval
-PACKAGE_TRACE_EVAL_STATS := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
-PACKAGE_TRACE_EVAL_FILES := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
-PACKAGE_TRACE_EVAL_CALLS := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
-
-BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
+PACKAGE_TRACE_EVAL_DIR     := $(RUN_DIR)/package-trace-eval
+PACKAGE_TRACE_EVAL_STATS   := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
+PACKAGE_TRACE_EVAL_FILES   := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+PACKAGE_TRACE_EVAL_CALLS   := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
+PACKAGE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/package-scripts-to-run.txt
 
 # base run
 BASE_RUN_DIR   := $(RUN_DIR)/base-run
 BASE_RUN_STATS := $(BASE_RUN_DIR)/parallel.csv
 
 # base tracing
-BASE_TRACE_EVAL_DIR   := $(RUN_DIR)/base-trace-eval
-BASE_PACKAGE_TRACE_EVAL_STATS := $(BASE_TRACE_EVAL_DIR)/parallel.csv
-BASE_TRACE_EVAL_FILES := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
-BASE_TRACE_EVAL_CALLS := $(BASE_TRACE_EVAL_DIR)/calls.fst
+BASE_TRACE_EVAL_DIR     := $(RUN_DIR)/base-trace-eval
+BASE_TRACE_EVAL_STATS   := $(BASE_TRACE_EVAL_DIR)/parallel.csv
+BASE_TRACE_EVAL_FILES   := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+BASE_TRACE_EVAL_CALLS   := $(BASE_TRACE_EVAL_DIR)/calls.fst
+BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
 
-# static eval
-PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
-PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/parallel.csv
-PACKAGE_EVALS_STATIC_CSV		:= $(PACKAGE_EVALS_STATIC_DIR)/package-evals-static.csv
-
+KAGGLE_TIMEOUT              := 1d
 KAGGLE_KORPUS_DIR						:= $(RUN_DIR)/kaggle-korpus/notebooks/r/kernels
 KAGGLE_KORPUS_METADATA_CSV  := $(KAGGLE_KORPUS_DIR)/kernels-metadata.csv
 KAGGLE_DATASET_DIR					:= $(RUN_DIR)/kaggle-dataset
@@ -123,7 +124,7 @@ KAGGLE_KERNELS_R								:= $(KAGGLE_KERNELS_DIR)/kernel.R
 KAGGLE_KERNELS_CSV							:= $(KAGGLE_KERNELS_DIR)/kernel.csv
 KAGGLE_KERNELS_EVALS_STATIC_CSV := $(KAGGLE_KERNELS_DIR)/kaggle-evals-static.csv
 KAGGLE_KERNELS_STATS						:= $(KAGGLE_KERNELS_DIR)/parallel.csv
-KAGGLE_KERNELS_TO_RUN_TXT       := $(KAGGLE_KERNELS_DIR)/kernels-to-run.txt
+KAGGLE_SCRIPTS_TO_RUN_TXT       := $(RUN_DIR)/kaggle-scripts-to-run.txt
 
 KAGGLE_RUN_DIR   := $(RUN_DIR)/kaggle-run
 KAGGLE_RUN_STATS := $(KAGGLE_RUN_DIR)/parallel.csv
@@ -164,7 +165,7 @@ $(PACKAGES_CRAN_FILE):
 	$(RSCRIPT) -e 'writeLines(setdiff(installed.packages()[, 1], readLines("$(PACKAGES_CORE_FILE)")), "$@")'
 
 $(PACKAGE_METADATA_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-metadata.R \
+	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-metadata.R \
     -- --types metadata,functions,revdeps,sloc \
        --cran-mirror $(CRAN_LOCAL_MIRROR) \
        $(CRAN_DIR)/extracted/{1}
@@ -195,7 +196,7 @@ $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(P
     --out-all-details $(CORPUS_ALL_DETAILS)
 
 $(PACKAGE_COVERAGE_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R \
+	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R \
     --  --type all $(CRAN_DIR)/extracted/{1}
 
 $(PACKAGE_COVERAGE_CSV):
@@ -206,18 +207,18 @@ $(PACKAGE_COVERAGE_CSV):
 ################################
 
 $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R
+	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R
 	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_EVALS_STATIC_STATS))
 
 $(PACKAGE_RUNNABLE_CODE_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
+	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
     -- $(CRAN_DIR)/extracted/{1}
 
 $(PACKAGE_RUNNABLE_CODE_CSV): $(PACKAGE_RUNNABLE_CODE_STATS)
 	$(MERGE) --in $(@D) --csv-cols "ccciii" --key "package" --key-use-dirname $(@F)
 
 $(PACKAGE_RUNNABLE_CODE_EVAL_STATS):
-	-$(MAP) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
+	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
     -- $(CRAN_DIR)/extracted/{1} --wrap $(TRACE_EVAL_WRAP_TEMPLATE_FILE)
 
 $(PACKAGE_RUNNABLE_CODE_EVAL_CSV): $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
@@ -225,17 +226,17 @@ $(PACKAGE_RUNNABLE_CODE_EVAL_CSV): $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 
 $(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
-    'glue::glue("{package}/{file}", read.csv("$<"))' > $@
+    'glue::glue("{package}/{file}", .envir=read.csv("$<"))' > $@
 
 $(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    -- $(PACKAGE_RUNNABLE_CODE_DIR)/{1}/{2}
+    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
 $(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(CORPUS))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
-    -- $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}/{2}
+    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
 
 $(PACKAGE_TRACE_EVAL_FILES): $(PACKAGE_TRACE_EVAL_STATS)
 	$(MERGE) --in $(@D) $(@F)
@@ -247,19 +248,17 @@ $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
     'glue::glue("{package}/{file}", .envir=subset(read.csv("$<"), package %in% readLines("$(CORPUS)")[1:$(CORPUS_SIZE)]))' > $@
 
-$(BASE_RUN_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
 $(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    --env EVALS_TO_TRACE_FILE \
-    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}/{2}
+    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
-$(BASE_PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
-$(BASE_PACKAGE_TRACE_EVAL_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
+$(BASE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
+$(BASE_TRACE_EVAL_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
-    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}/{2}
+    -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
 
-$(BASE_TRACE_EVAL_FILES): $(BASE_PACKAGE_TRACE_EVAL_STATS)
+$(BASE_TRACE_EVAL_FILES): $(BASE_TRACE_EVAL_STATS)
 	$(MERGE) --in $(@D) $(@F)
 
 ############################
@@ -302,17 +301,17 @@ $(KAGGLE_KERNELS_CSV): $(KAGGLE_KERNELS_STATS)
 $(KAGGLE_KERNELS_EVALS_STATIC_CSV): $(KAGGLE_KERNELS_STATS)
 	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
 
-$(KAGGLE_KERNELS_TO_RUN_TXT): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
+$(KAGGLE_SCRIPTS_TO_RUN_TXT): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
 	$(SCRIPTS_DIR)/kaggle-scripts-to-run.R --metadata $(KAGGLE_KERNELS_CSV) --evals-static $(KAGGLE_KERNELS_EVALS_STATIC_CSV) > $@
 
-$(KAGGLE_RUN_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
-	-$(MAP) -f $(KAGGLE_KERNELS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    -- $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
+$(KAGGLE_RUN_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
+	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+    -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
 
 $(KAGGLE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE="global"
-$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_KERNELS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
-	-$(MAP) -t 1d -f $(KAGGLE_KERNELS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    -- $(KAGGLE_KERNELS_DIR)/{1}/kernel.R
+$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
+	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+    -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel.R
 
 $(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
 	$(MERGE) --in $(@D) $(@F)
