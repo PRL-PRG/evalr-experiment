@@ -10,6 +10,7 @@
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(rlang))
 library(fs)
+library(readr)
 library(fst)
 library(optparse)
 
@@ -437,43 +438,23 @@ Example:
 main <- function(
   corpus_file,
   calls_file,
-  kaggle_calls_file,
   evals_undefined_file,
-  evals_raw_file,
-  evals_summarized_core_file,
-  evals_summarized_pkgs_file,
-  evals_summarized_kaggle_file,
-  evals_summarized_externals_file
+  evals_summarized_file,
+  evals_summarized_externals_file,
+  trim_expressions,
+  out_name
 ) {
-
   cat("Reading and validating input files\n")
 
   now_first <- Sys.time()
-  corpus <- read_fst(corpus_file)
-  # stopifnot(length(corpus) == 29)
-  stopifnot("package" %in% names(corpus)) # for preprocess, we mainly care about the package names
 
   eval_calls_raw <-
     read_fst(calls_file) %>%
     as_tibble() %>%
     mutate(
-      package = basename(dirname(dirname(dirname(file)))),
-      corpus = "cran"
+      package = basename(dirname(dirname(dirname(file))))
     )
-  # %>%
-  # semi_join(corpus, by = "package") # There might be more packages traced than what is in the corpus
-  # stopifnot(length(eval_calls_raw) == 52)
 
-  eval_calls_kaggle_raw <-
-    read_fst(kaggle_calls_file) %>%
-    as_tibble() %>%
-    mutate(
-      package = basename(dirname(file)),
-      corpus = "kaggle"
-    )
-  # stopifnot(length(eval_calls_kaggle_raw) == 52)
-
-  # eval_calls_raw <- bind_rows(eval_calls_raw, eval_calls_kaggle_raw) # Kaggle has not the right format currently
   res <- difftime(Sys.time(), now_first)
   cat("Done in ", res, units(res), "\n")
 
@@ -486,8 +467,6 @@ main <- function(
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
-  # cat("Adding types\n")
-  # eval_calls <- eval_calls %>% add_types() # This step is now useless as there are directly strings
   cat("Correcting srcrefs\n")
   now <- Sys.time()
   eval_calls <- eval_calls %>% add_eval_source(eval_calls_raw)
@@ -496,34 +475,39 @@ main <- function(
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
-  cat("Adding parse args\n")
-  now <- Sys.time()
-  eval_calls <- eval_calls %>% add_parse_args()
-  res <- difftime(Sys.time(), now)
-  cat("Done in ", res, units(res), "\n")
-
-  cat("only keep eval in corpus\n")
-  now <- Sys.time()
-  # This is probably useless as there already was a filtering at tracing time.
-  # But this is a sanity check...
-  # Keep if quick
-  corpus_files <- select(corpus, package) %>% bind_rows(tribble(~package, "core", "base", "base?"))
-  eval_calls_corpus <- eval_calls %>% keep_only_corpus(corpus_files)
-  eval_calls_externals <- eval_calls %>% get_externals(corpus_files)
+  # cat("Adding parse args\n")
+  # now <- Sys.time()
+  # eval_calls <- eval_calls %>% add_parse_args()
   # res <- difftime(Sys.time(), now)
-  cat("Done in ", res, units(res), "\n")
+  # cat("Done in ", res, units(res), "\n")
 
-  # Separate datasets
-  cat("Separating datasets\n")
-  now <- Sys.time()
-  eval_calls_core <-
-    eval_calls_corpus %>% filter(eval_source_type == "core")
-  eval_calls_packages <-
-    eval_calls_corpus %>% filter(eval_source_type == "package")
-  eval_calls_kaggle <-
-    eval_calls_corpus %>% filter(eval_source_type == "kaggle")
-  res <- difftime(Sys.time(), now)
-  cat("Done in ", res, units(res), "\n")
+  # Trim expressions if needed
+  if(trim_expressions) {
+    cat("Trim expressions\n")
+    now <- Sys.time()
+    eval_calls <- eval_calls %>% mutate(across(contains("expression"), ~ str_sub(., end=120L)))
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
+  }
+
+  if(!is.na(corpus_file)) {
+    cat("Only keep eval in corpus\n")
+    now <- Sys.time()
+    corpus <- readLines(corpus_file)
+    # This is probably useless as there already was a filtering at tracing time.
+    # But this is a sanity check...
+    # Keep if quick
+    corpus_files <- enframe(corpus, name = NULL, value = "package")
+    eval_calls_corpus <- eval_calls %>% keep_only_corpus(corpus_files)
+    eval_calls_externals <- eval_calls %>% get_externals(corpus_files)
+    eval_calls <- eval_calls_corpus
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
+  }
+  else {
+    eval_calls_externals <- eval_calls %>% head(0) # to get all the same columns
+  }
+
 
   # Some other interesting data
   cat("Undefined calls per package\n")
@@ -535,26 +519,25 @@ main <- function(
   # cat("Number of call sites per package\n")
   # now <- Sys.time()
   # calls_site_per_package <-
-  #   known_call_sites(eval_calls_corpus, corpus_files)
+  #   known_call_sites(eval_calls, corpus_files)
   # res <- difftime(Sys.time(), now)
   # cat("Done in ", res, units(res), "\n")
 
   # Write output files
   cat("Writing output files\n")
+  if(!is.na(out_name)) {
+    evals_undefined_file <- paste0(out_name, "-undefined.fst")
+    evals_summarized_file <- paste0(out_name, "-summarized.fst")
+    evals_summarized_externals_file <- paste0(out_name, "-externals.fst")
+  }
+
   now <- Sys.time()
   write_fst(undefined_per_package, evals_undefined_file)
 
-  write_fst(eval_calls, evals_raw_file)
-
-  write_fst(eval_calls_core, evals_summarized_core_file)
-
-  write_fst(eval_calls_packages, evals_summarized_pkgs_file)
-
-  write_fst(eval_calls_kaggle, evals_summarized_kaggle_file)
+  write_fst(eval_calls, evals_summarized_file)
 
   write_fst(eval_calls_externals, evals_summarized_externals_file)
 
-  # write_fst(calls_site_per_package, package_evals_dynamic_file)
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
@@ -566,7 +549,7 @@ main <- function(
 
 option_list <- list(
   make_option(
-    c("--corpus"), dest="corpus_file", metavar="FILE",
+    c("--corpus"), dest="corpus_file", metavar="FILE", default = NA,
     help="Corpus file"
   ),
   make_option(
@@ -574,26 +557,20 @@ option_list <- list(
     help="Calls file"
   ),
   make_option(
-    c("--kaggle-calls"), dest="kaggle_calls_file", metavar="FILE",
-    help="Kaggle calls file"
-  ),
-  make_option(
     c("--out-undefined"), dest="evals_undefined_file", metavar="FILE"
   ),
   make_option(
-    c("--out-raw"), dest="evals_raw_file", metavar="FILE"
-  ),
-  make_option(
-    c("--out-summarized-core"), dest="evals_summarized_core_file", metavar="FILE"
-  ),
-  make_option(
-    c("--out-summarized-pkgs"), dest="evals_summarized_pkgs_file", metavar="FILE"
-  ),
-  make_option(
-    c("--out-summarized-kaggle"), dest="evals_summarized_kaggle_file", metavar="FILE"
+    c("--out-summarized"), dest="evals_summarized_file", metavar="FILE"
   ),
   make_option(
     c("--out-summarized-externals"), dest="evals_summarized_externals_file", metavar="FILE"
+  ),
+  make_option(
+    c("--trim"), action="store_true", dest="trim_expressions", default=TRUE,
+  ),
+  make_option(
+    c("--out"),  action="store", dest="out_name", default=NA, type='character',
+    help="Use that name to build all the output file names."
   )
 )
 
@@ -602,9 +579,11 @@ opts <- parse_args(opt_parser)
 opts$help <- NULL
 
 # TODO: proper check of args
-if (length(opts) != 9) {
+if (!length(opts) %in% 2:7) {
   print_help(opt_parser)
   stop("Missing args")
 }
 
-do.call(main, opts)
+main(opts$corpus, opts$calls_file, opts$evals_undefined_file,
+     opts$evals_summarized_file, opts$evals_summarized_externals_file,
+     opts$trim_expressions, opts$out_name)
