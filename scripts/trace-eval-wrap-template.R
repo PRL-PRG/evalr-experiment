@@ -10,10 +10,12 @@ traces <- evil::trace_code(
 evil::write_trace(
   traces,
   function(file, df) {
-    fst::write_fst(
-      df,
-      file.path(Sys.getenv("RUNR_CWD", getwd()), paste0(gsub("_", "-", file), ".fst"))
-    )
+    if (nrow(df) > 0) {
+      fst::write_fst(
+        df,
+        file.path(Sys.getenv("RUNR_CWD", getwd()), paste0(gsub("_", "-", file), ".fst"))
+      )
+    }
   }
 )
 

@@ -14,6 +14,8 @@ PACKAGES_CORE_FILE			:= packages-core.txt
 PACKAGES_CRAN_FILE			:= packages-cran.txt
 # just base
 PACKAGES_BASE_FILE			:= packages-base.txt
+# everything
+PACKAGES_ALL_FILE       := packages-all.txt
 
 # extra parameters
 PACKAGES_FILE ?= $(PACKAGES_CRAN_FILE)
@@ -102,6 +104,12 @@ PACKAGE_TRACE_EVAL_STATS   := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
 PACKAGE_TRACE_EVAL_FILES   := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 PACKAGE_TRACE_EVAL_CALLS   := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
 PACKAGE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/package-scripts-to-run.txt
+PACKAGE_EVALS_TO_TRACE     := $(RUN_DIR)/package-evals-to-trace.txt
+
+# base static evals
+BASE_EVALS_STATIC_DIR   := $(RUN_DIR)/base-evals-static
+BASE_EVALS_STATIC_STATS := $(BASE_EVALS_STATIC_DIR)/parallel.csv
+BASE_EVALS_STATIC_CSV   := $(BASE_EVALS_STATIC_DIR)/base-evals-static.csv
 
 # base run
 BASE_RUN_DIR   := $(RUN_DIR)/base-run
@@ -206,9 +214,12 @@ $(PACKAGE_COVERAGE_CSV):
 ## PACKAGES related targets   ##
 ################################
 
-$(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
-	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R
-	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_EVALS_STATIC_STATS))
+$(PACKAGE_EVALS_STATIC_STATS): $(PACKAGES_CRAN_FILE)
+	-$(MAP) -t $(TIMEOUT) -f $< -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R \
+    -- --type package --out $(notdir $(PACKAGE_EVALS_STATIC_CSV)) {1}
+
+$(PACKAGE_EVALS_STATIC_CSV): $(PACKAGE_EVALS_STATIC_STATS)
+	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
 
 $(PACKAGE_RUNNABLE_CODE_STATS):
 	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
@@ -232,7 +243,12 @@ $(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
-$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(CORPUS))
+$(PACKAGE_EVALS_TO_TRACE): $(CORPUS) $(PACKAGE_EVALS_STATIC_CSV)
+	$(SCRIPTS_DIR)/package-evals-static-summary.R \
+    --corpus $(CORPUS) \
+    --evals-static $(PACKAGE_EVALS_STATIC_CSV) > $@
+
+$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
@@ -244,6 +260,13 @@ $(PACKAGE_TRACE_EVAL_FILES): $(PACKAGE_TRACE_EVAL_STATS)
 ############################
 ## BASE related targets   ##
 ############################
+$(BASE_EVALS_STATIC_STATS): $(PACKAGES_CORE_FILE)
+	-$(MAP) -t $(TIMEOUT) -f $< -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R \
+    -- --type package --out $(notdir $(BASE_EVALS_STATIC_CSV)) {1}
+
+$(BASE_EVALS_STATIC_CSV): $(BASE_EVALS_STATIC_STATS)
+	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
+
 $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
     'glue::glue("{package}/{file}", .envir=subset(read.csv("$<"), package %in% readLines("$(CORPUS)")[1:$(CORPUS_SIZE)]))' > $@
@@ -321,32 +344,63 @@ $(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
 ################
 
 PREPROCESS_DIR      := $(RUN_DIR)/preprocess
-SUM_CORE_FILE   	  := $(PREPROCESS_DIR)/summarized-core.fst
-SUM_KAGGLE_FILE 	  := $(PREPROCESS_DIR)/summarized-kaggle.fst
-SUM_PKGS_FILE   	  := $(PREPROCESS_DIR)/summarized-packages.fst
-SUM_RAW_FILE        := $(PREPROCESS_DIR)/raw.fst
-SUM_EXTERNALS_FILE	:= $(PREPROCESS_DIR)/summarized-externals.fst
-SUM_UNDEFINED_FILE  := $(PREPROCESS_DIR)/summarized-evals-undefined.fst
-PREPROCESS_FILES := \
-  $(SUM_CORE_FILE) \
-  $(SUM_KAGGLE_FILE) \
-  $(SUM_PKGS_FILE) \
-  $(SUM_RAW_FILE) \
-  $(SUM_EXTERNALS_FILE) \
-  $(SUM_UNDEFINED_FILE)
 
-$(PREPROCESS_FILES): $(CORPUS_DETAILS) $(PACKAGE_TRACE_EVAL_CALLS) $(KAGGLE_TRACE_EVAL_CALLS)
+PACKAGE_PREPROCESS_DIR			:= $(PREPROCESS_DIR)/package
+PACKAGE_SUM_FILE						:= $(PACKAGE_PREPROCESS_DIR)/summarized.fst
+PACKAGE_SUM_EXTERNALS_FILE	:= $(PACKAGE_PREPROCESS_DIR)/summarized-externals.fst
+PACKAGE_SUM_UNDEFINED_FILE	:= $(PACKAGE_PREPROCESS_DIR)/undefined.fst
+PACKAGE_PREPROCESS_FILES    := \
+  $(PACKAGE_SUM_FILE) $(PACKAGE_SUM_EXTERNALS_FILE) $(PACKAGE_SUM_UNDEFINED_FILE)
+
+BASE_PREPROCESS_DIR			:= $(PREPROCESS_DIR)/base
+BASE_SUM_FILE						:= $(BASE_PREPROCESS_DIR)/summarized.fst
+BASE_SUM_EXTERNALS_FILE	:= $(BASE_PREPROCESS_DIR)/summarized-externals.fst
+BASE_SUM_UNDEFINED_FILE	:= $(BASE_PREPROCESS_DIR)/undefined.fst
+BASE_PREPROCESS_FILES   := \
+  $(BASE_SUM_FILE) $(BASE_SUM_EXTERNALS_FILE) $(BASE_SUM_UNDEFINED_FILE)
+
+KAGGLE_PREPROCESS_DIR			:= $(PREPROCESS_DIR)/kaggle
+KAGGLE_SUM_FILE						:= $(KAGGLE_PREPROCESS_DIR)/summarized.fst
+KAGGLE_SUM_EXTERNALS_FILE	:= $(KAGGLE_PREPROCESS_DIR)/summarized-externals.fst
+KAGGLE_SUM_UNDEFINED_FILE	:= $(KAGGLE_PREPROCESS_DIR)/undefined.fst
+KAGGLE_PREPROCESS_FILES   := \
+  $(KAGGLE_SUM_FILE) $(KAGGLE_SUM_EXTERNALS_FILE) $(KAGGLE_SUM_UNDEFINED_FILE)
+
+$(PACKAGE_SNAP_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_SNAP_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
 	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
-    --corpus $(CORPUS_DETAILS) \
+    --corpus $(CORPUS) \
+    --calls $(PACKAGE_SNAP_TRACE_EVAL_CALLS) \
+    --out-summarized $(PACKAGE_SNAP_SUM_FILE) \
+    --out-summarized-externals $(PACKAGE_SNAP_SUM_EXTERNALS_FILE) \
+    --out-undefined $(PACKAGE_SNAP_SUM_UNDEFINED_FILE)
+
+$(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS)
+	-mkdir -p $(@D)
+	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+    --corpus $(CORPUS) \
     --calls $(PACKAGE_TRACE_EVAL_CALLS) \
-    --kaggle-calls $(KAGGLE_TRACE_EVAL_CALLS) \
-    --out-undefined $(SUM_UNDEFINED_FILE) \
-    --out-raw $(SUM_RAW_FILE) \
-    --out-summarized-core $(SUM_CORE_FILE) \
-    --out-summarized-pkgs $(SUM_PKGS_FILE) \
-    --out-summarized-kaggle $(SUM_KAGGLE_FILE) \
-    --out-summarized-externals $(SUM_EXTERNALS_FILE)
+    --out-summarized $(PACKAGE_SUM_FILE) \
+    --out-summarized-externals $(PACKAGE_SUM_EXTERNALS_FILE) \
+    --out-undefined $(PACKAGE_SUM_UNDEFINED_FILE)
+
+$(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
+	-mkdir -p $(@D)
+	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+    --corpus $(PACKAGES_CORE_FILE) \
+    --calls $(BASE_TRACE_EVAL_CALLS) \
+    --out-summarized $(BASE_SUM_FILE) \
+    --out-summarized-externals $(BASE_SUM_EXTERNALS_FILE) \
+    --out-undefined $(BASE_SUM_UNDEFINED_FILE)
+
+$(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS)
+	-mkdir -p $(@D)
+	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+    --calls $(KAGGLE_TRACE_EVAL_CALLS) \
+    --out-summarized $(KAGGLE_SUM_FILE) \
+    --out-summarized-externals $(KAGGLE_SUM_EXTERNALS_FILE) \
+    --out-undefined $(KAGGLE_SUM_UNDEFINED_FILE)
+
 
 ###############
 ## Shortcuts ##
@@ -356,16 +410,26 @@ package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
 package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
-package-evals-static: $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS)
+package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
 corpus: $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS)
 package-run: $(PACKAGE_RUN_STATS)
 package-trace-eval: $(PACKAGE_TRACE_EVAL_FILES)
+package-preprocess: $(PACKAGE_PREPROCESS_FILES)
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
 kaggle-run: $(KAGGLE_RUN_STATS)
 kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
+kaggle-preprocess: $(KAGGLE_PREPROCESS_FILES)
+base-evals-static: $(BASE_EVALS_STATIC_CSV)
 base-run: $(BASE_RUN_STATS)
 base-trace-eval: $(BASE_TRACE_EVAL_FILES)
-preprocess: $(PREPROCESS_FILES)
+base-preprocess: $(BASE_PREPROCESS_FILES)
+preprocess: package-preprocess base-preprocess kaggle-preprocess
+
+snapshot:
+	mv $(PACKAGE_PREPROCESS_DIR) $(PREPROCESS_DIR)/package-backup
+	$(MAKE) package-preprocess
+	mv $(PREPROCESS_DIR)/package $(PREPROCESS_DIR)/package-snapshot
+	mv $(PREPROCESS_DIR)/package-snapshot $(PACKAGE_PREPROCESS_DIR)
 
 .PHONY: local-env
 local-env:

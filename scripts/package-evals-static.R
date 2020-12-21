@@ -120,9 +120,11 @@ if (length(opts$args) != 1) {
 
 out_file <- opts$options$out_file
 
-switch(
-  opts$options$type,
-  package=run_package(opts$args, out_file),
-  file=run_file(opts$args, out_file),
-  stop("Type must be a 'package' or a 'file'")
+invisible(
+  switch(
+    opts$options$type,
+    package=run_package(opts$args, out_file),
+    file=run_file(opts$args, out_file),
+    stop("Type must be a 'package' or a 'file'")
+  )
 )
