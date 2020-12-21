@@ -514,6 +514,7 @@ main <- function(
   cat("Undefined calls per package\n")
   now <- Sys.time()
   undefined_per_package <- undefined_packages(eval_calls)
+  eval_calls <- eval_calls %>% filter(eval_source_type != "<undefined>")
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
