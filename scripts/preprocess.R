@@ -317,23 +317,12 @@ add_eval_source <- function(dataset, dataset_with_stacks) {
   return(dataset_c)
 }
 
-add_eval_source_type <- function(dataset) {
-  return(dataset %>%
-    mutate(
-      eval_source_type = case_when(
-        eval_source %in% c("base", "core") ~ "core",
-        eval_source == "base?" ~ "<undefined>",
-        TRUE ~ "package"
-      )
-    ))
-}
-
 
 add_fake_srcref <- function(dataset) {
   return(dataset %>%
     mutate(
       eval_call_srcref = if_else(
-        is.na(eval_call_srcref) & eval_source_type != "<undefined>",
+        is.na(eval_call_srcref) & eval_source != "base?",
         str_c(eval_source, caller_function, eval_call_expression,
           sep =
             "::"
@@ -389,7 +378,7 @@ get_externals <- function(dataset, corpus_files) {
 
 undefined_packages <- function(eval_calls) {
   undefined_evals <-
-    eval_calls %>% filter(eval_source_type == "<undefined>")
+    eval_calls %>% filter(eval_source == "base?")
   undefined_per_package <-
     undefined_evals %>%
     group_by(package) %>%
@@ -408,7 +397,7 @@ undefined_packages <- function(eval_calls) {
 # This is performed directly in usage_metrics.Rmd
 known_call_sites <- function(eval_calls_corpus, corpus_files) {
   call_sites_per_package <- eval_calls_corpus %>%
-    filter(eval_source_type == "package", eval_source %in% corpus_files$package) %>%
+    filter(eval_source != "base?", eval_source %in% corpus_files$package) %>%
     group_by(eval_source) %>%
     summarize(n = n_distinct(eval_call_srcref))
 
@@ -475,7 +464,6 @@ main <- function(
   cat("Correcting srcrefs\n")
   now <- Sys.time()
   eval_calls <- eval_calls %>% add_eval_source(eval_calls_raw)
-  eval_calls <- eval_calls %>% add_eval_source_type()
   eval_calls <- eval_calls %>% add_fake_srcref()
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
@@ -518,7 +506,7 @@ main <- function(
   cat("Undefined calls per package\n")
   now <- Sys.time()
   undefined_per_package <- undefined_packages(eval_calls)
-  eval_calls <- eval_calls %>% filter(eval_source_type != "<undefined>")
+  eval_calls <- eval_calls %>% filter(eval_source != "base?")
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
