@@ -586,8 +586,7 @@ if (!length(opts) %in% 2:7) {
   stop("Missing args")
 }
 
-main(opts$corpus, opts$calls_file, opts$evals_undefined_file,
+invisible(main(opts$corpus, opts$calls_file, opts$evals_undefined_file,
      opts$evals_summarized_file, opts$evals_summarized_externals_file,
-     opts$trim_expressions, opts$out_name)
+     opts$trim_expressions, opts$out_name))
 
-exit(0)
