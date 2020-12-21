@@ -265,6 +265,10 @@ find_package_name <-
             # This eval is defined in function doSEQ in do.R of package foreach
             return("foreach")
           }
+          else if (str_detect(file, fixed("kaggle-trace-eval")))
+          {
+            return(str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[[2]])
+          }
           else {
             return("base?")
           }
