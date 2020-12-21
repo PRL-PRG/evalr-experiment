@@ -14,6 +14,8 @@ PACKAGES_CORE_FILE			:= packages-core.txt
 PACKAGES_CRAN_FILE			:= packages-cran.txt
 # just base
 PACKAGES_BASE_FILE			:= packages-base.txt
+# everything
+PACKAGES_ALL_FILE       := packages-all.txt
 
 # extra parameters
 PACKAGES_FILE ?= $(PACKAGES_CRAN_FILE)
@@ -103,6 +105,11 @@ PACKAGE_TRACE_EVAL_FILES   := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_E
 PACKAGE_TRACE_EVAL_CALLS   := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
 PACKAGE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/package-scripts-to-run.txt
 PACKAGE_EVALS_TO_TRACE     := $(RUN_DIR)/package-evals-to-trace.txt
+
+# base static evals
+BASE_EVALS_STATIC_DIR   := $(RUN_DIR)/base-evals-static
+BASE_EVALS_STATIC_STATS := $(BASE_EVALS_STATIC_DIR)/parallel.csv
+BASE_EVALS_STATIC_CSV   := $(BASE_EVALS_STATIC_DIR)/base-evals-static.csv
 
 # base run
 BASE_RUN_DIR   := $(RUN_DIR)/base-run
@@ -207,9 +214,12 @@ $(PACKAGE_COVERAGE_CSV):
 ## PACKAGES related targets   ##
 ################################
 
-$(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS):
-	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R
-	$(MERGE) $(@D) $(@F) $(notdir $(PACKAGE_EVALS_STATIC_STATS))
+$(PACKAGE_EVALS_STATIC_STATS): $(PACKAGES_CRAN_FILE)
+	-$(MAP) -t $(TIMEOUT) -f $< -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R \
+    -- --type package --out $(notdir $(PACKAGE_EVALS_STATIC_CSV)) {1}
+
+$(PACKAGE_EVALS_STATIC_CSV): $(PACKAGE_EVALS_STATIC_STATS)
+	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
 
 $(PACKAGE_RUNNABLE_CODE_STATS):
 	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-runnable-code.R \
@@ -250,6 +260,13 @@ $(PACKAGE_TRACE_EVAL_FILES): $(PACKAGE_TRACE_EVAL_STATS)
 ############################
 ## BASE related targets   ##
 ############################
+$(BASE_EVALS_STATIC_STATS): $(PACKAGES_CORE_FILE)
+	-$(MAP) -t $(TIMEOUT) -f $< -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R \
+    -- --type package --out $(notdir $(BASE_EVALS_STATIC_CSV)) {1}
+
+$(BASE_EVALS_STATIC_CSV): $(BASE_EVALS_STATIC_STATS)
+	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
+
 $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
     'glue::glue("{package}/{file}", .envir=subset(read.csv("$<"), package %in% readLines("$(CORPUS)")[1:$(CORPUS_SIZE)]))' > $@
@@ -393,7 +410,7 @@ package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
 package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
-package-evals-static: $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_EVALS_STATIC_STATS)
+package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
 corpus: $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS)
 package-run: $(PACKAGE_RUN_STATS)
 package-trace-eval: $(PACKAGE_TRACE_EVAL_FILES)
@@ -402,6 +419,7 @@ kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGL
 kaggle-run: $(KAGGLE_RUN_STATS)
 kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
 kaggle-preprocess: $(KAGGLE_PREPROCESS_FILES)
+base-evals-static: $(BASE_EVALS_STATIC_CSV)
 base-run: $(BASE_RUN_STATS)
 base-trace-eval: $(BASE_TRACE_EVAL_FILES)
 base-preprocess: $(BASE_PREPROCESS_FILES)
