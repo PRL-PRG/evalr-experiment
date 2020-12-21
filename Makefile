@@ -102,6 +102,7 @@ PACKAGE_TRACE_EVAL_STATS   := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
 PACKAGE_TRACE_EVAL_FILES   := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 PACKAGE_TRACE_EVAL_CALLS   := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
 PACKAGE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/package-scripts-to-run.txt
+PACKAGE_EVALS_TO_TRACE     := $(RUN_DIR)/package-evals-to-trace.txt
 
 # base run
 BASE_RUN_DIR   := $(RUN_DIR)/base-run
@@ -232,7 +233,12 @@ $(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
-$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(CORPUS))
+$(PACKAGE_EVALS_TO_TRACE): $(CORPUS) $(PACKAGE_EVALS_STATIC_CSV)
+	$(SCRIPTS_DIR)/package-evals-static-summary.R \
+    --corpus $(CORPUS) \
+    --evals-static $(PACKAGE_EVALS_STATIC_CSV) > $@
+
+$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
