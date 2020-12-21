@@ -236,6 +236,7 @@ extract_package_name <- function(src_ref, file) {
     str_starts(src_ref, fixed("/tmp/")) ~ str_match(src_ref, "/tmp.*/Rtmp[^/]*/R\\.INSTALL[^/]*/([^/]+)/R/.*$")[[2]], # path problem here
     str_starts(src_ref, fixed("/mnt/ocfs_vol")) ~ "base", # depends on where the shared is mounted!
     str_starts(src_ref, fixed("::")) ~ str_match(src_ref, "::([^:]*)::.*")[[2]],
+    str_starts(src_ref, ".*::") ~ str_match(src_ref, "([^:]*)::.*")[[2]],
     str_starts(src_ref, fixed("test")) ~ str_match(src_ref, "([^/]*)/.*")[[2]],
     str_starts(src_ref, fixed("/:")) ~ str_match(file, "[^/]*/[^/]*/([^/]*)/.*")[[2]],
     TRUE ~ "unknown"
@@ -288,7 +289,7 @@ find_package_name_second_chance <-
     return(extract_package_name(new_srcref, file))
   }
 
-add_eval_source <- function(dataset, dataset_with_stacks) {
+add_eval_source <- function(dataset) {
   dataset_c <- dataset %>%
     mutate(eval_source = pmap_chr(
       list(
@@ -301,18 +302,7 @@ add_eval_source <- function(dataset, dataset_with_stacks) {
       find_package_name
     ))
 
-  # dataset_stacks <- dataset_c %>% filter(eval_source == "base?") %>%
-  #     left_join(select(dataset_with_stacks, -ends_with("_type"))) %>%
-  #     select(-eval_call_id, -caller_stack_expression_raw) %>%
-  #     distinct()
-  # dataset_stacks <- dataset_stacks %>%
-  #   distinct(file, caller_stack_expression, caller_stack_expression_srcref) %>%
-  #   mutate(eval_source = pmap_chr(list(file, caller_stack_expression, caller_stack_expression_srcref),
-  #                                 find_package_name_second_chance)) %>%
-  #   select(-starts_with("caller_stack_")) %>%
-  #   distinct() # There might be a problem with duplicated rows with same nb_ev_calls?
 
-  # dataset_c <- bind_rows(dataset_c %>% filter(eval_source != "base?"), dataset_stacks)
 
   return(dataset_c)
 }
@@ -322,11 +312,11 @@ add_fake_srcref <- function(dataset) {
   return(dataset %>%
     mutate(
       eval_call_srcref = if_else(
-        is.na(eval_call_srcref) & eval_source != "base?",
-        str_c(eval_source, caller_function, eval_call_expression,
+         is.na(eval_call_srcref) & eval_source != "base?",
+        str_c(eval_source, str_replace_na(caller_function), eval_call_expression,
           sep =
             "::"
-        ),
+        ), # better to use paste0 here than str_c, because NA is not absorbing for paste0
         eval_call_srcref
       )
     ))
@@ -463,7 +453,7 @@ main <- function(
 
   cat("Correcting srcrefs\n")
   now <- Sys.time()
-  eval_calls <- eval_calls %>% add_eval_source(eval_calls_raw)
+  eval_calls <- eval_calls %>% add_eval_source()
   eval_calls <- eval_calls %>% add_fake_srcref()
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
