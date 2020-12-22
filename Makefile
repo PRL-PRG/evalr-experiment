@@ -435,7 +435,7 @@ snapshot:
 	mv $(PACKAGE_PREPROCESS_DIR) $(PREPROCESS_DIR)/package-backup
 	$(MAKE) package-preprocess
 	mv $(PREPROCESS_DIR)/package $(PREPROCESS_DIR)/package-snapshot
-	mv $(PREPROCESS_DIR)/package-snapshot $(PACKAGE_PREPROCESS_DIR)
+	mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR)
 
 .PHONY: local-env
 local-env:
