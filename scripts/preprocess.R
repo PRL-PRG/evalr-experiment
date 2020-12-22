@@ -427,7 +427,7 @@ read_merged_file <- function(filepath) {
 preprocess_calls <- function(arguments) {
 
     corpus_file <- arguments$corpus
-    calls_file <- arguments$merged_file
+    calls_file <- arguments$calls_file
     evals_undefined_file <- arguments$evals_undefined_file
     evals_summarized_file <- arguments$evals_summarized_file
     evals_summarized_externals_file <- arguments$evals_summarized_externals_file
@@ -542,7 +542,7 @@ time <- function(df, message, fun) {
 preprocess_reflection <- function(arguments) {
 
     reflection <-
-        arguments$merged_file %>%
+        arguments$reflection_file %>%
         time("Reading merged file", read_merged_file) %>%
         time("Adding eval source", add_eval_source) %>%
         time("Adding fake srcref", add_fake_srcref)
@@ -556,19 +556,18 @@ preprocess_reflection <- function(arguments) {
 ################################################################################
 
 parse_program_arguments <- function() {
-    "USAGE: ./preprocess <corpus_file> <calls_file> <kaggle_calls_file> <package_evals_dynamic_file> <evals_undefined_file> <evals_raw_file> <evals_summarized_core_file> <evals_summarized_pkgs_file> <evals_summarized_kaggle_file> <evals_summarized_externals_file>.
-The command has 10 arguments. The first 3 ones are input files, the last 7 ones are output files. All files are assumed to be fst files.
-Example:
-./preprocess revalstudy/inst/data/corpus.fst run/package-evals-traced.4/calls.fst run/kaggle-run/calls.fst revalstudy/inst/data/evals-dynamic.fst run/package-evals-traced.4/summarized-evals-undefined.fst run/package-evals-traced.4/raws.fst run/package-evals-traced.4/summarized-core.fst run/package-evals-traced.4/summarized-packages.fst run/package-evals-traced.4/summarized-kaggle.fst run/package-evals-traced.4/summarized-externals.fst
-\n"
     option_list <- list(
         make_option(
             c("--corpus"), dest="corpus_file", metavar="FILE", default = NA,
             help="Corpus file"
         ),
         make_option(
-            c("--in-merged"), dest="merged_file", metavar="FILE",
-            help="Merged file"
+            c("--calls"), dest="calls_file", metavar="FILE",
+            help="Calls file"
+        ),
+        make_option(
+            c("--reflection"), dest="reflection_file", metavar="FILE",
+            help="Reflection file"
         ),
         make_option(
             c("--out-undefined"), dest="evals_undefined_file", metavar="FILE"
@@ -593,7 +592,7 @@ Example:
     arguments$help <- NULL
 
     ## TODO: proper check of args
-    if (!length(arguments) %in% 3:8) {
+    if (!length(arguments) %in% 4:9) {
         print_help(opt_parser)
         stop("Missing args")
     }
@@ -604,11 +603,13 @@ Example:
 main <- function() {
     arguments <- parse_program_arguments()
 
-    if(arguments$args[1] == "calls") {
-        preprocess_calls(arguments)
+    str(arguments)
+
+    if(arguments$args[1] %in% c("calls", "all")) {
+        preprocess_calls(arguments$options)
     }
-    else if (arguments$args[1] == "reflection") {
-        preprocess_reflection(arguments)
+    else if (arguments$args[1] %in% c("reflection", "all")) {
+        preprocess_reflection(arguments$options)
     }
 
     invisible(NULL)

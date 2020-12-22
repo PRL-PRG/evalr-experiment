@@ -122,6 +122,7 @@ BASE_TRACE_EVAL_DIR     := $(RUN_DIR)/base-trace-eval
 BASE_TRACE_EVAL_STATS   := $(BASE_TRACE_EVAL_DIR)/parallel.csv
 BASE_TRACE_EVAL_FILES   := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 BASE_TRACE_EVAL_CALLS   := $(BASE_TRACE_EVAL_DIR)/calls.fst
+BASE_TRACE_EVAL_REFLECTION   := $(BASE_TRACE_EVAL_DIR)/reflection.fst
 BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
 
 KAGGLE_TIMEOUT              := 1d
@@ -143,6 +144,7 @@ KAGGLE_TRACE_EVAL_DIR   := $(RUN_DIR)/kaggle-trace-eval
 KAGGLE_PACKAGE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 KAGGLE_TRACE_EVAL_CALLS := $(KAGGLE_TRACE_EVAL_DIR)/calls.fst
+KAGGLE_TRACE_EVAL_REFLECTION := $(KAGGLE_TRACE_EVAL_DIR)/reflection.fst
 
 LIBS: lib/injectr lib/instrumentr lib/runr lib/evil
 
@@ -350,7 +352,7 @@ $(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
 ################
 ## PREPROCESS ##
 ################
-
+PREPROCESS_TYPE ?= "all"
 PREPROCESS_DIR      := $(RUN_DIR)/preprocess
 
 PACKAGE_PREPROCESS_DIR			:= $(PREPROCESS_DIR)/package
@@ -374,20 +376,13 @@ KAGGLE_SUM_UNDEFINED_FILE	:= $(KAGGLE_PREPROCESS_DIR)/undefined.fst
 KAGGLE_PREPROCESS_FILES   := \
   $(KAGGLE_SUM_FILE) $(KAGGLE_SUM_EXTERNALS_FILE) $(KAGGLE_SUM_UNDEFINED_FILE)
 
-$(PACKAGE_SNAP_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_SNAP_TRACE_EVAL_CALLS)
-	-mkdir -p $(@D)
-	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
-    --corpus $(CORPUS) \
-    --calls $(PACKAGE_SNAP_TRACE_EVAL_CALLS) \
-    --out-summarized $(PACKAGE_SNAP_SUM_FILE) \
-    --out-summarized-externals $(PACKAGE_SNAP_SUM_EXTERNALS_FILE) \
-    --out-undefined $(PACKAGE_SNAP_SUM_UNDEFINED_FILE)
-
 $(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRACE_EVAL_CODE) $(PACKAGE_TRACE_EVAL_REFLECTION)
 	-mkdir -p $(@D)
 	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+	  $(PREPROCESS_TYPE) \
     --corpus $(CORPUS) \
     --calls $(PACKAGE_TRACE_EVAL_CALLS) \
+    --reflection $(PACKAGE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(PACKAGE_SUM_FILE) \
     --out-summarized-externals $(PACKAGE_SUM_EXTERNALS_FILE) \
     --out-undefined $(PACKAGE_SUM_UNDEFINED_FILE)
@@ -395,8 +390,10 @@ $(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRA
 $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
 	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+    $(PREPROCESS_TYPE) \
     --corpus $(PACKAGES_CORE_FILE) \
     --calls $(BASE_TRACE_EVAL_CALLS) \
+    --reflection $(BASE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(BASE_SUM_FILE) \
     --out-summarized-externals $(BASE_SUM_EXTERNALS_FILE) \
     --out-undefined $(BASE_SUM_UNDEFINED_FILE)
@@ -404,7 +401,9 @@ $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
 $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
 	$(R_SCRIPT) $(SCRIPTS_DIR)/preprocess.R \
+    $(PREPROCESS_TYPE) \
     --calls $(KAGGLE_TRACE_EVAL_CALLS) \
+    --reflection $(KAGGLE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(KAGGLE_SUM_FILE) \
     --out-summarized-externals $(KAGGLE_SUM_EXTERNALS_FILE) \
     --out-undefined $(KAGGLE_SUM_UNDEFINED_FILE)
