@@ -95,8 +95,8 @@ PACKAGE_RUNNABLE_CODE_EVAL_CSV	 := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/runnable-co
 PACKAGE_RUNNABLE_CODE_EVAL_STATS := $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/parallel.csv
 
 # code run
-PACKAGE_CODE_RUN_DIR := $(RUN_DIR)/package-run
-PACKAGE_RUN_STATS    := $(PACKAGE_CODE_RUN_DIR)/parallel.csv
+PACKAGE_RUN_DIR   := $(RUN_DIR)/package-run
+PACKAGE_RUN_STATS := $(PACKAGE_RUN_DIR)/parallel.csv
 
 # code run eval
 PACKAGE_TRACE_EVAL_DIR     := $(RUN_DIR)/package-trace-eval
