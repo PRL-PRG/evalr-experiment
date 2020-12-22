@@ -239,6 +239,7 @@ $(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
     'glue::glue("{package}/{file}", .envir=read.csv("$<"))' > $@
 
+.PRECIOUS: $(PACKAGE_RUN_STATS)
 $(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
@@ -248,6 +249,7 @@ $(PACKAGE_EVALS_TO_TRACE): $(CORPUS) $(PACKAGE_EVALS_STATIC_CSV)
     --corpus $(CORPUS) \
     --evals-static $(PACKAGE_EVALS_STATIC_CSV) > $@
 
+.PRECIOUS: $(PACKAGE_TRACE_EVAL_STATS)
 $(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
@@ -271,10 +273,12 @@ $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(RSCRIPT) -e \
     'glue::glue("{package}/{file}", .envir=subset(read.csv("$<"), package %in% readLines("$(CORPUS)")[1:$(CORPUS_SIZE)]))' > $@
 
+.PRECIOUS: $(BASE_RUN_STATS)
 $(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
+.PRECIOUS: $(BASE_TRACE_EVAL_STATS)
 $(BASE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
 $(BASE_TRACE_EVAL_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
@@ -327,10 +331,12 @@ $(KAGGLE_KERNELS_EVALS_STATIC_CSV): $(KAGGLE_KERNELS_STATS)
 $(KAGGLE_SCRIPTS_TO_RUN_TXT): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
 	$(SCRIPTS_DIR)/kaggle-scripts-to-run.R --metadata $(KAGGLE_KERNELS_CSV) --evals-static $(KAGGLE_KERNELS_EVALS_STATIC_CSV) > $@
 
+.PRECIOUS: $(KAGGLE_RUN_STATS)
 $(KAGGLE_RUN_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
 
+.PRECIOUS: $(KAGGLE_TRACE_EVAL_STATS)
 $(KAGGLE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE="global"
 $(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
