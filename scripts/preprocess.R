@@ -406,43 +406,41 @@ known_call_sites <- function(eval_calls_corpus, corpus_files) {
 
 ### Command line and preprocessing pipeline
 
-usage <- function() {
-  cat(
-    "USAGE:
-./preprocess <corpus_file> <calls_file> <kaggle_calls_file> <package_evals_dynamic_file> <evals_undefined_file> <evals_raw_file> <evals_summarized_core_file> <evals_summarized_pkgs_file> <evals_summarized_kaggle_file> <evals_summarized_externals_file>.
 
-The command has 10 arguments. The first 3 ones are input files, the last 7 ones are output files. All files are assumed to be fst files.
+read_merged_file <- function(filepath) {
 
-Example:
-./preprocess revalstudy/inst/data/corpus.fst run/package-evals-traced.4/calls.fst run/kaggle-run/calls.fst revalstudy/inst/data/evals-dynamic.fst run/package-evals-traced.4/summarized-evals-undefined.fst run/package-evals-traced.4/raws.fst run/package-evals-traced.4/summarized-core.fst run/package-evals-traced.4/summarized-packages.fst run/package-evals-traced.4/summarized-kaggle.fst run/package-evals-traced.4/summarized-externals.fst
-\n"
-  )
+    cat("Reading ", filepath, "\n")
+
+    t1 <- Sys.time()
+
+    df <- read_fst(filepath) %>%
+          as_tibble() %>%
+          mutate(package = basename(dirname(dirname(dirname(file)))))
+
+    res <- difftime(Sys.time(), t1)
+
+    cat("Finished in ", res, units(res), "\n")
+
+    df
 }
 
-main <- function(
-  corpus_file,
-  calls_file,
-  evals_undefined_file,
-  evals_summarized_file,
-  evals_summarized_externals_file,
-  trim_expressions,
-  out_name
-) {
-  cat("Reading and validating input files\n")
+preprocess_calls <- function(arguments) {
+
+    corpus_file <- arguments$corpus
+    calls_file <- arguments$merged_file
+    evals_undefined_file <- arguments$evals_undefined_file
+    evals_summarized_file <- arguments$evals_summarized_file
+    evals_summarized_externals_file <- arguments$evals_summarized_externals_file
+    trim_expressions <- arguments$trim_expressions
+    out_name <- arguments$out_name
 
   now_first <- Sys.time()
 
-  eval_calls_raw <-
-    read_fst(calls_file) %>%
-    as_tibble() %>%
-    mutate(
-      package = basename(dirname(dirname(dirname(file))))
-    )
+  eval_calls_raw <- read_merged_file(calls_file)
 
-  res <- difftime(Sys.time(), now_first)
-  cat("Done in ", res, units(res), "\n")
+  ## Preprocessing pipeline
 
-  # Preprocessing pipeline
+  cat("Preprocessing ", corpus_file, "\n")
 
   cat("Deduplicating from ", nrow(eval_calls_raw), " rows")
   now <- Sys.time()
@@ -531,44 +529,89 @@ main <- function(
   return(0)
 }
 
-option_list <- list(
-  make_option(
-    c("--corpus"), dest="corpus_file", metavar="FILE", default = NA,
-    help="Corpus file"
-  ),
-  make_option(
-    c("--calls"), dest="calls_file", metavar="FILE",
-    help="Calls file"
-  ),
-  make_option(
-    c("--out-undefined"), dest="evals_undefined_file", metavar="FILE"
-  ),
-  make_option(
-    c("--out-summarized"), dest="evals_summarized_file", metavar="FILE"
-  ),
-  make_option(
-    c("--out-summarized-externals"), dest="evals_summarized_externals_file", metavar="FILE"
-  ),
-  make_option(
-    c("--trim"), action="store_true", dest="trim_expressions", default=TRUE,
-  ),
-  make_option(
-    c("--out"),  action="store", dest="out_name", default=NA, type='character',
-    help="Use that name to build all the output file names."
-  )
-)
+################################################################################
+## REFLECTION DATA PREPROCESSING
+################################################################################
 
-opt_parser <- OptionParser(option_list=option_list)
-opts <- parse_args(opt_parser)
-opts$help <- NULL
-
-# TODO: proper check of args
-if (!length(opts) %in% 2:7) {
-  print_help(opt_parser)
-  stop("Missing args")
+time <- function(df, message, fun) {
+    cat(message, "\n")
+    system.time(df <- fun(df))
+    df
 }
 
-invisible(main(opts$corpus, opts$calls_file, opts$evals_undefined_file,
-     opts$evals_summarized_file, opts$evals_summarized_externals_file,
-     opts$trim_expressions, opts$out_name))
+preprocess_reflection <- function(arguments) {
 
+    reflection <-
+        arguments$merged_file %>%
+        time("Reading merged file", read_merged_file) %>%
+        time("Adding eval source", add_eval_source) %>%
+        time("Adding fake srcref", add_fake_srcref)
+
+    write_fst(reflection, arguments$evals_summarized_file)
+}
+
+
+################################################################################
+## ARGUMENT PARSING AND DRIVER CODE
+################################################################################
+
+parse_program_arguments <- function() {
+    "USAGE: ./preprocess <corpus_file> <calls_file> <kaggle_calls_file> <package_evals_dynamic_file> <evals_undefined_file> <evals_raw_file> <evals_summarized_core_file> <evals_summarized_pkgs_file> <evals_summarized_kaggle_file> <evals_summarized_externals_file>.
+The command has 10 arguments. The first 3 ones are input files, the last 7 ones are output files. All files are assumed to be fst files.
+Example:
+./preprocess revalstudy/inst/data/corpus.fst run/package-evals-traced.4/calls.fst run/kaggle-run/calls.fst revalstudy/inst/data/evals-dynamic.fst run/package-evals-traced.4/summarized-evals-undefined.fst run/package-evals-traced.4/raws.fst run/package-evals-traced.4/summarized-core.fst run/package-evals-traced.4/summarized-packages.fst run/package-evals-traced.4/summarized-kaggle.fst run/package-evals-traced.4/summarized-externals.fst
+\n"
+    option_list <- list(
+        make_option(
+            c("--corpus"), dest="corpus_file", metavar="FILE", default = NA,
+            help="Corpus file"
+        ),
+        make_option(
+            c("--in-merged"), dest="merged_file", metavar="FILE",
+            help="Merged file"
+        ),
+        make_option(
+            c("--out-undefined"), dest="evals_undefined_file", metavar="FILE"
+        ),
+        make_option(
+            c("--out-summarized"), dest="evals_summarized_file", metavar="FILE"
+        ),
+        make_option(
+            c("--out-summarized-externals"), dest="evals_summarized_externals_file", metavar="FILE"
+        ),
+        make_option(
+            c("--trim"), action="store_true", dest="trim_expressions", default=TRUE,
+            ),
+        make_option(
+            c("--out"),  action="store", dest="out_name", default=NA, type='character',
+            help="Use that name to build all the output file names."
+        )
+    )
+
+    opt_parser <- OptionParser(option_list=option_list)
+    arguments <- parse_args(opt_parser, positional_arguments = 1)
+    arguments$help <- NULL
+
+    ## TODO: proper check of args
+    if (!length(arguments) %in% 3:8) {
+        print_help(opt_parser)
+        stop("Missing args")
+    }
+
+    arguments
+}
+
+main <- function() {
+    arguments <- parse_program_arguments()
+
+    if(arguments$args[1] == "calls") {
+        preprocess_calls(arguments)
+    }
+    else if (arguments$args[1] == "reflection") {
+        preprocess_reflection(arguments)
+    }
+
+    invisible(NULL)
+}
+
+main()
