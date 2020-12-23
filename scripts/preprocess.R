@@ -244,143 +244,97 @@ extract_package_name <- function(src_ref, file) {
 }
 
 
-find_package_name <-
-  function(caller_function,
-           caller_package,
-           caller_expression,
-           srcref,
-           file) {
+find_package_name <- function(caller_function,
+                              caller_package,
+                              caller_expression,
+                              srcref,
+                              file) {
     if (caller_function %in% eval_base_functions) {
-      return("core")
+        "core"
     } # "Actually base but we generalize
     else {
-      tempPack <- extract_package_name(srcref, file)
-      # It would indicate that one of the regex has failed and
-      # so that probably assumptions made on the paths in the srcref are no longer valid
-      stopifnot(!is.na(tempPack))
-      if (tempPack == "base?")
-      # It means the srcref was NA
-        {
-          if (caller_package == "foreach" &&
-            caller_expression == "e$fun(obj, substitute(ex), parent.frame(), e$data)") {
-            # This eval is defined in function doSEQ in do.R of package foreach
-            return("foreach")
-          }
-          else if (str_detect(file, fixed("kaggle-trace-eval")))
-          {
-            return(str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[[2]])
-          }
-          else {
-            return("base?")
-          }
+        tempPack <- extract_package_name(srcref, file)
+        ## It would indicate that one of the regex has failed and
+        ## so that probably assumptions made on the paths in the srcref are no longer valid
+        stopifnot(!is.na(tempPack))
+        ## It means the srcref was NA
+        if (tempPack == "base?") {
+            ## This eval is defined in function doSEQ in do.R of package foreach
+            if (caller_package == "foreach" && caller_expression == "e$fun(obj, substitute(ex), parent.frame(), e$data)") {
+                "foreach"
+            }
+            else if (str_detect(file, fixed("kaggle-trace-eval"))) {
+                str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[[2]]
+            }
+            else {
+                "base?"
+            }
         }
-      else {
-        return(tempPack)
-      }
+        else {
+            tempPack
+        }
     }
-  }
-
-find_package_name_second_chance <-
-  function(file,
-           caller_stack_expr,
-           caller_stack_expr_srcref) {
-    new_srcref <-
-      package_name_from_call_stack(caller_stack_expr, caller_stack_expr_srcref)
-    return(extract_package_name(new_srcref, file))
-  }
-
-add_eval_source <- function(dataset) {
-  dataset_c <- dataset %>%
-    mutate(eval_source = pmap_chr(
-      list(
-        caller_function,
-        caller_package,
-        caller_expression,
-        eval_call_srcref,
-        file
-      ),
-      find_package_name
-    ))
-
-
-
-  return(dataset_c)
 }
 
-
-add_fake_srcref <- function(dataset) {
-  return(dataset %>%
-    mutate(
-      eval_call_srcref = if_else(
-         is.na(eval_call_srcref) & eval_source != "base?",
-        str_c(eval_source, str_replace_na(caller_function), eval_call_expression,
-          sep =
-            "::"
-        ), # better to use paste0 here than str_c, because NA is not absorbing for paste0
-        eval_call_srcref
-      )
-    ))
+compute_fake_srcref <- function(caller_function,
+                                caller_package,
+                                caller_expression,
+                                srcref,
+                                file,
+                                eval_call_expression) {
+    package_name <- pmap(list(caller_function,
+                              caller_package,
+                              caller_expression,
+                              srcref,
+                              file),
+                         find_package_name)
+    str_c(package_name, str_replace_na(caller_function), eval_call_expression, sep = "::")
 }
 
+add_fake_srcref <- function(df) {
+    df_na <-
+        df %>%
+        filter(is.na(eval_call_srcref)) %>%
+        mutate(eval_call_srcref = compute_fake_srcref(caller_function,
+                                                      caller_package,
+                                                      caller_expression,
+                                                      eval_call_srcref,
+                                                      file,
+                                                      eval_call_expression))
 
-add_ast_size <- function(dataset) {
-  print("Creating cluster")
-  cluster <- new_cluster(parallel::detectCores() - 10)
-  print("Cluster created. Copying functiond and libraries.")
-  cluster_copy(cluster, "get_expr")
-  cluster_copy(cluster, "expr_size")
-  cluster_copy(cluster, "expr_size_str")
-  cluster_library(cluster, "tidyverse")
-  print("Functions and libraries copied. Partitionning.")
-  dataset_c <-
-    dataset %>%
-    select(expr_resolved) %>%
-    distinct() %>%
-    group_by(expr_resolved) %>%
-    partition(cluster)
-  print("Partionned. Computing.")
-  dataset_c <- dataset_c %>%
-    mutate(expr_resolved_ast_size = map_int(expr_resolved, expr_size_str)) %>%
-    collect()
-  print("Finished computing. Left joining.")
-  dataset <- dataset %>% left_join(dataset_c)
-  print("Finished.")
-  return(dataset)
+    df %>%
+        filter(!is.na(eval_call_srcref)) %>%
+        bind_rows(df_na)
 }
-
-add_package <- function(dataset) {
-  mutate(dataset,
-    package = basename(dirname(dirname(file)))
-  )
-}
-
-
 
 keep_only_corpus <- function(dataset, corpus_files) {
-  return(dataset %>%
-    semi_join(corpus_files, by = c("eval_source" = "package")))
+    dataset %>%
+        semi_join(corpus_files, by = c("eval_source" = "package"))
 }
 
 get_externals <- function(dataset, corpus_files) {
-  return(dataset %>%
-    anti_join(corpus_files, by = c("eval_source" = "package")))
+    dataset %>%
+        anti_join(corpus_files, by = c("eval_source" = "package"))
 }
 
 undefined_packages <- function(eval_calls) {
-  undefined_evals <-
-    eval_calls %>% filter(eval_source == "base?")
-  undefined_per_package <-
-    undefined_evals %>%
-    group_by(package) %>%
-    summarize(n = n_distinct(eval_call_expression))
-  known_packages <-
-    setdiff(eval_calls$package, undefined_per_package$package) %>% as_tibble_col(column_name = "package")
-  known_packages <- known_packages %>% mutate(n = 0)
 
-  undefined_per_package <-
-    bind_rows(undefined_per_package, known_packages) %>% arrange(desc(n))
+    undefined_per_package <-
+        eval_calls %>%
+        filter(eval_source == "base?")
+        group_by(package) %>%
+        summarize(n = n_distinct(eval_call_expression))
 
-  return(undefined_per_package)
+    known_packages <-
+        setdiff(eval_calls$package, undefined_per_package$package) %>%
+        as_tibble_col(column_name = "package") %>%
+        mutate(n = 0)
+
+    undefined_per_package <-
+        bind_rows(undefined_per_package, known_packages) %>%
+        arrange(desc(n))
+
+    undefined_per_package
 }
 
 
@@ -406,20 +360,20 @@ known_call_sites <- function(eval_calls_corpus, corpus_files) {
 
 ### Command line and preprocessing pipeline
 
+add_package <- function(dataset) {
+    dataset %>%
+        mutate(package = basename(dirname(dirname(file))))
+}
 
 read_merged_file <- function(filepath) {
-
-    cat("Reading ", filepath, "\n")
 
     t1 <- Sys.time()
 
     df <- read_fst(filepath) %>%
           as_tibble() %>%
-          mutate(package = basename(dirname(dirname(dirname(file)))))
+          add_package()
 
     res <- difftime(Sys.time(), t1)
-
-    cat("Finished in ", res, units(res), "\n")
 
     df
 }
@@ -436,11 +390,17 @@ preprocess_calls <- function(arguments) {
 
   now_first <- Sys.time()
 
+  cat("Reading ", calls_file, "\n")
+
   eval_calls_raw <- read_merged_file(calls_file)
+
+  res <- difftime(Sys.time(), now_first)
+
+  cat("Finished in ", res, units(res), "\n")
 
   ## Preprocessing pipeline
 
-  cat("Preprocessing ", corpus_file, "\n")
+  cat("Preprocessing ", calls_file, "\n")
 
   cat("Deduplicating from ", nrow(eval_calls_raw), " rows")
   now <- Sys.time()
@@ -451,7 +411,6 @@ preprocess_calls <- function(arguments) {
 
   cat("Correcting srcrefs\n")
   now <- Sys.time()
-  eval_calls <- eval_calls %>% add_eval_source()
   eval_calls <- eval_calls %>% add_fake_srcref()
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
@@ -534,8 +493,11 @@ preprocess_calls <- function(arguments) {
 ################################################################################
 
 time <- function(df, message, fun) {
-    cat(message, "\n")
-    system.time(df <- fun(df))
+    force(df)
+    cat("# ", message, "\n")
+    t <- system.time(df <- fun(df))
+    print(t)
+    cat("\n")
     df
 }
 
@@ -544,10 +506,9 @@ preprocess_reflection <- function(arguments) {
     reflection <-
         arguments$reflection_file %>%
         time("Reading merged file", read_merged_file) %>%
-        time("Adding eval source", add_eval_source) %>%
         time("Adding fake srcref", add_fake_srcref)
 
-    write_fst(reflection, arguments$evals_summarized_file)
+    write_fst(reflection, arguments$reflection_summarized_file)
 }
 
 
@@ -584,18 +545,15 @@ parse_program_arguments <- function() {
         make_option(
             c("--out"),  action="store", dest="out_name", default=NA, type='character',
             help="Use that name to build all the output file names."
+        ),
+        make_option(
+            c("--out-summarized-reflection"), dest="reflection_summarized_file", metavar="FILE"
         )
     )
 
     opt_parser <- OptionParser(option_list=option_list)
     arguments <- parse_args(opt_parser, positional_arguments = 1)
-    arguments$help <- NULL
-
-    ## TODO: proper check of args
-    if (!length(arguments) %in% 4:9) {
-        print_help(opt_parser)
-        stop("Missing args")
-    }
+    arguments$options$help <- NULL
 
     arguments
 }
@@ -604,6 +562,8 @@ main <- function() {
     arguments <- parse_program_arguments()
 
     str(arguments)
+
+    cat("\n")
 
     if(arguments$args[1] %in% c("calls", "all")) {
         preprocess_calls(arguments$options)
