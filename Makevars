@@ -1,6 +1,7 @@
 # -*- mode: makefile -*-
-LIBRARY_DIR := $(realpath $(CURDIR)/../library)
-CRAN_DIR    := $(realpath $(CURDIR)/../CRAN)
+PROJECT_BASE_DIR   ?= /mnt/ocfs_vol_00/project-evalr
+LIBRARY_DIR := $(PROJECT_BASE_DIR)/library
+CRAN_DIR    := $(PROJECT_BASE_DIR)/CRAN
 
 DOCKER_IMAGE_NAME := prlprg/project-evalr
 DOCKER_R_DYNTRACE_IMAGE_NAME := prlprg/r-dyntrace:r-4.0.2
