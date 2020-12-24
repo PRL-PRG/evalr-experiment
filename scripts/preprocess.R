@@ -245,21 +245,21 @@ extract_package_name <- function(src_ref, file) {
 add_eval_source <- function(df) {
   df <- df %>% mutate(
     eval_source = case_when(
-        is.na(eval_call_srcref) & caller_function %in% eval_base_functions ~ "base",
-        is.na(eval_call_srcref) & caller_package == "foreach" & caller_expression == "e$fun(obj, substitute(ex), parent.frame(), e$data)" ~ "foreach",
-        is.na(eval_call_srcref) & str_detect(file, fixed("kaggle-trace-eval")) ~ str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[[2]],
-        is.na(eval_call_srcref) ~ "base?",
-        str_starts(eval_call_srcref, fixed("./R/")) ~ "core",
-        str_starts(eval_call_srcref, fixed("/tmp")) ~ str_match(eval_call_srcref, "/tmp.*/Rtmp[^/]*/R\\.INSTALL[^/]*/([^/]+)/R/.*$")[[2]],
-        str_starts(eval_call_srcref, fixed("/mnt/ocfs_vol")) ~ "base", # depends on where the shared is mounted!
-        str_starts(eval_call_srcref, fixed("::")) ~ str_match(eval_call_srcref, "::([^:]*)::.*")[[2]],
-        str_starts(eval_call_srcref, ".*::") ~ str_match(eval_call_srcref, "([^:]*)::.*")[[2]],
-        str_starts(eval_call_srcref, fixed("test")) ~ str_match(eval_call_srcref, "([^/]*)/.*")[[2]],
-        str_starts(eval_call_srcref, fixed("/:")) ~ str_match(file, "[^/]*/[^/]*/([^/]*)/.*")[[2]],
-        TRUE ~ "unknown"
-      )
+      is.na(eval_call_srcref) & caller_function %in% eval_base_functions ~ "base",
+      is.na(eval_call_srcref) & caller_package == "foreach" & caller_expression == "e$fun(obj, substitute(ex), parent.frame(), e$data)" ~ "foreach",
+      is.na(eval_call_srcref) & str_detect(file, fixed("kaggle-trace-eval")) ~ str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[, 2],
+      is.na(eval_call_srcref) ~ "base?",
+      str_starts(eval_call_srcref, fixed("./R/")) ~ "core",
+      str_starts(eval_call_srcref, fixed("/tmp")) ~ str_match(eval_call_srcref, "/tmp.*/Rtmp[^/]*/R\\.INSTALL[^/]*/([^/]+)/R/.*$")[, 2],
+      str_starts(eval_call_srcref, fixed("/mnt/ocfs_vol")) ~ "base", # depends on where the shared is mounted!
+      str_starts(eval_call_srcref, fixed("::")) ~ str_match(eval_call_srcref, "::([^:]*)::.*")[, 2],
+      str_starts(eval_call_srcref, ".*::") ~ str_match(eval_call_srcref, "([^:]*)::.*")[, 2],
+      str_starts(eval_call_srcref, fixed("test")) ~ str_match(eval_call_srcref, "([^/]*)/.*")[, 2],
+      str_starts(eval_call_srcref, fixed("/:")) ~ str_match(file, "[^/]*/[^/]*/([^/]*)/.*")[, 2],
+      TRUE ~ "unknown"
+    )
   )
-  #stopifnot(!is.na(df$eval_source))
+  stopifnot(!is.na(df$eval_source))
   return(df)
 }
 
@@ -295,6 +295,22 @@ find_package_name <- function(caller_function,
   }
 }
 
+add_eval_source2 <- function(df) {
+  df %>%
+      mutate(eval_source = pmap_chr(
+        list(
+          caller_function,
+          caller_package,
+          caller_expression,
+          eval_call_srcref,
+          file
+        ),
+        find_package_name
+      ))
+  stopifnot(!is.na(df$eval_source))
+  return(df)
+}
+
 compute_fake_srcref <- function(eval_source,
                                 caller_function,
                                 eval_call_expression) {
@@ -326,8 +342,8 @@ get_externals <- function(dataset, corpus_files) {
 undefined_packages <- function(eval_calls) {
   undefined_per_package <-
     eval_calls %>%
-    filter(eval_source == "base?")
-  group_by(package) %>%
+    filter(eval_source == "base?")  %>%
+    group_by(package) %>%
     summarize(n = n_distinct(eval_call_expression))
 
   known_packages <-
@@ -511,6 +527,7 @@ preprocess_reflection <- function(arguments) {
   reflection <-
     arguments$reflection_file %>%
     time("Reading merged file", read_merged_file) %>%
+    time("Adding eval source", add_eval_source) %>%
     time("Adding fake srcref", add_fake_srcref)
 
   write_fst(reflection, arguments$reflection_summarized_file)
