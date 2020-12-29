@@ -57,8 +57,7 @@ TRACE_EVAL_RESULTS := calls.fst \
   code.fst \
   dependencies.fst \
   lookups.fst \
-  reflection.fst \
-  side-effects.fst
+  reflection.fst
 
 ## tasks outputs
 
@@ -261,7 +260,7 @@ $(PACKAGE_EVALS_TO_TRACE): $(CORPUS) $(PACKAGE_EVALS_STATIC_CSV)
 
 .PRECIOUS: $(PACKAGE_TRACE_EVAL_STATS)
 $(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
-$(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
+$(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
@@ -445,10 +444,10 @@ base-preprocess: $(BASE_PREPROCESS_FILES)
 preprocess: package-preprocess base-preprocess kaggle-preprocess
 
 snapshot:
-	mv $(PACKAGE_PREPROCESS_DIR) $(PREPROCESS_DIR)/package-backup
+	[ -d $(PACKAGE_PREPROCESS_DIR)/package ] && mv $(PACKAGE_PREPROCESS_DIR)/package $(PREPROCESS_DIR)/package-backup || true
 	$(MAKE) package-preprocess
 	mv $(PREPROCESS_DIR)/package $(PREPROCESS_DIR)/package-snapshot
-	mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR)
+	[ -d $(PACKAGE_PREPROCESS_DIR)/package-backup ] && mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR) || true
 
 .PHONY: local-env
 local-env:
