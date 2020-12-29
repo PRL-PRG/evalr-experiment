@@ -126,7 +126,12 @@ BASE_TRACE_EVAL_CALLS   := $(BASE_TRACE_EVAL_DIR)/calls.fst
 BASE_TRACE_EVAL_REFLECTION   := $(BASE_TRACE_EVAL_DIR)/reflection.fst
 BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
 
-KAGGLE_TIMEOUT              := 1d
+# based on the last run, except for:
+# - leaf-classification/primenumber-random-forest (10hrs)
+# - santander-product-recommendation/katerynad-know-your-data-part-2-products (>24h)
+# all kernels finish within 2hrs. Given that we might add stuff to
+# tracer, run other parallel tasks, we set the timeout to 4hrs
+KAGGLE_TIMEOUT              := 4h
 KAGGLE_KORPUS_DIR						:= $(RUN_DIR)/kaggle-korpus/notebooks/r/kernels
 KAGGLE_KORPUS_METADATA_CSV  := $(KAGGLE_KORPUS_DIR)/kernels-metadata.csv
 KAGGLE_DATASET_DIR					:= $(RUN_DIR)/kaggle-dataset
@@ -142,7 +147,7 @@ KAGGLE_RUN_DIR   := $(RUN_DIR)/kaggle-run
 KAGGLE_RUN_STATS := $(KAGGLE_RUN_DIR)/parallel.csv
 
 KAGGLE_TRACE_EVAL_DIR   := $(RUN_DIR)/kaggle-trace-eval
-KAGGLE_PACKAGE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
+KAGGLE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 KAGGLE_TRACE_EVAL_CALLS := $(KAGGLE_TRACE_EVAL_DIR)/calls.fst
 KAGGLE_TRACE_EVAL_REFLECTION := $(KAGGLE_TRACE_EVAL_DIR)/reflection.fst
