@@ -245,9 +245,9 @@ $(PACKAGE_RUNNABLE_CODE_EVAL_STATS):
 $(PACKAGE_RUNNABLE_CODE_EVAL_CSV): $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 	$(MERGE) --in $(@D) --csv-cols "ccciii" --key "package" --key-use-dirname $(@F)
 
-$(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
-	-$(RSCRIPT) -e \
-    'glue::glue("{package}/{file}", .envir=read.csv("$<"))' > $@
+# $(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
+# 	-$(RSCRIPT) -e \
+#     'glue::glue("{package}/{file}", .envir=read.csv("$<"))' > $@
 
 .PRECIOUS: $(PACKAGE_RUN_STATS)
 $(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
