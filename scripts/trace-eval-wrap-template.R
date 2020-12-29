@@ -1,4 +1,4 @@
-stopifnot(!is.null(Sys.getenv("EVALS_TO_TRACE_FILE")))
+stopifnot(Sys.getenv("EVALS_TO_TRACE_FILE") != "")
 
 traces <- evil::trace_code(
   evals_to_trace=readLines(Sys.getenv("EVALS_TO_TRACE_FILE")),
