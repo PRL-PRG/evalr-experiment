@@ -463,3 +463,13 @@ rstudio:
     -e ROOT=true \
     -e DISABLE_AUTH=true \
     fikovnik/rstudio:4.0.2
+
+.PHONY: httpd
+httpd:
+	docker run \
+    --rm \
+    -d \
+    --name evalr-httpd \
+    -p 80:80 \
+    -v $(PROJECT_BASE_DIR):/usr/local/apache2/htdocs$(PROJECT_BASE_DIR) \
+    httpd:2.4
