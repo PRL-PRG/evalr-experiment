@@ -76,7 +76,7 @@ run_package <- function(package, out_file) {
       getNamespace(package)
     }
 
-  ns <- as.list(ns)
+  ns <- as.list(ns, all.names=TRUE)
   funs <- keep(ns, is.function)
   calls <- imap(funs, process_fun)
   calls <- discard(calls, ~is.null(.) || length(.) == 0)
