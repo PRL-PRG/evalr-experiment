@@ -297,16 +297,16 @@ find_package_name <- function(caller_function,
 
 add_eval_source2 <- function(df) {
   df %>%
-      mutate(eval_source = pmap_chr(
-        list(
-          caller_function,
-          caller_package,
-          caller_expression,
-          eval_call_srcref,
-          file
-        ),
-        find_package_name
-      ))
+    mutate(eval_source = pmap_chr(
+      list(
+        caller_function,
+        caller_package,
+        caller_expression,
+        eval_call_srcref,
+        file
+      ),
+      find_package_name
+    ))
   stopifnot(!is.na(df$eval_source))
   return(df)
 }
@@ -342,18 +342,20 @@ get_externals <- function(dataset, corpus_files) {
 undefined_packages <- function(eval_calls) {
   undefined_per_package <-
     eval_calls %>%
-    filter(eval_source == "base?")  %>%
-    group_by(package) %>%
-    summarize(n = n_distinct(eval_call_expression))
-
-  known_packages <-
-    setdiff(eval_calls$package, undefined_per_package$package) %>%
-    as_tibble_col(column_name = "package") %>%
-    mutate(n = 0)
-
-  undefined_per_package <-
-    bind_rows(undefined_per_package, known_packages) %>%
-    arrange(desc(n))
+    filter(eval_source == "base?")
+  #
+  #   %>%
+  #   group_by(package) %>%
+  #   summarize(n = n_distinct(eval_call_expression))
+  #
+  # known_packages <-
+  #   setdiff(eval_calls$package, undefined_per_package$package) %>%
+  #   as_tibble_col(column_name = "package") %>%
+  #   mutate(n = 0)
+  #
+  # undefined_per_package <-
+  #   bind_rows(undefined_per_package, known_packages) %>%
+  #   arrange(desc(n))
 
   undefined_per_package
 }
