@@ -1,10 +1,9 @@
 # -*- mode: makefile -*-
 PROJECT_BASE_DIR ?= $(CURDIR)
-LIBRARY_DIR      ?= $(realpath $(PROJECT_BASE_DIR)/library)
-CRAN_DIR         ?= $(realpath $(PROJECT_BASE_DIR)/CRAN)
-R_DIR            ?= $(realpath $(PROJECT_BASE_DIR)/R-dyntrace)
-
-CRAN_MIRROR=https://cloud.r-project.org
+LIBRARY_DIR      ?= $(PROJECT_BASE_DIR)/library
+CRAN_DIR         ?= $(PROJECT_BASE_DIR)/CRAN
+R_DIR            ?= $(PROJECT_BASE_DIR)/R-dyntrace
+CRAN_MIRROR      := https://cloud.r-project.org
 
 DOCKER_IMAGE_NAME            := prlprg/project-evalr
 DOCKER_RSTUDIO_IMAGE_NAME    := fikovnik/rstudio:4.0.2
