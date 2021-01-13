@@ -56,13 +56,6 @@ process_revdeps <- function(raw) {
     rename(revdeps=n)
 }
 
-process_coverage <- function(raw) {
-  raw %>%
-    filter(type=="all") %>%
-    select(-type, -error, coverage_expr=coverage_expression) %>%
-    mutate(coverage_expr=coverage_expr/100, coverage_line=coverage_line/100)
-}
-
 process_runnable_code <- function(raw) {
   raw %>%
     filter(language=="R") %>%
@@ -98,7 +91,6 @@ run <- function(metadata_file,
                 functions_file,
                 sloc_file,
                 revdeps_file,
-                coverage_file,
                 runnable_code_file,
                 evals_static_file,
                 out_corpus_file,
@@ -109,7 +101,6 @@ run <- function(metadata_file,
   functions <- process_functions(read_csv(functions_file))
   sloc <- process_sloc(read_csv(sloc_file))
   revdeps <- process_revdeps(read_csv(revdeps_file))
-  coverage <- process_coverage(read_csv(coverage_file))
   runnable_code <- process_runnable_code(read_csv(runnable_code_file))
   evals_static <- process_evals_static(read_csv(evals_static_file))
 
@@ -117,14 +108,13 @@ run <- function(metadata_file,
     left_join(functions, by="package") %>%
     left_join(sloc, by="package") %>%
     left_join(revdeps, by="package") %>%
-    left_join(coverage, by="package") %>%
     left_join(runnable_code, by="package") %>%
     left_join(evals_static, by="package")
 
   corpus <-
     all %>%
       filter(loadable, evals > 0) %>%
-      arrange(desc(revdeps), desc(coverage_expr))
+      arrange(desc(revdeps))
 
   write_lines(corpus$package, out_corpus_file)
   write_fst(corpus, out_corpus_details_file)
@@ -140,8 +130,6 @@ option_list <- list(
               dest="revdeps_file", metavar="FILE"),
   make_option("--sloc", help="File with revdeps",
               dest="sloc_file", metavar="FILE"),
-  make_option("--coverage", help="File with coverage",
-              dest="coverage_file", metavar="FILE"),
   make_option("--runnable-code", help="File with runnable code",
               dest="runnable_code_file", metavar="FILE"),
   make_option("--evals-static", help="File with evals static",

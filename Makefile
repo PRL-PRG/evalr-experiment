@@ -79,11 +79,6 @@ PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
 PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/parallel.csv
 PACKAGE_EVALS_STATIC_CSV		:= $(PACKAGE_EVALS_STATIC_DIR)/package-evals-static.csv
 
-# coverage
-PACKAGE_COVERAGE_DIR   := $(RUN_DIR)/package-coverage
-PACKAGE_COVERAGE_CSV   := $(PACKAGE_COVERAGE_DIR)/coverage.csv
-PACKAGE_COVERAGE_STATS := $(PACKAGE_COVERAGE_DIR)/parallel.csv
-
 # runnable code
 PACKAGE_RUNNABLE_CODE_DIR		:= $(RUN_DIR)/package-runnable-code
 PACKAGE_RUNNABLE_CODE_CSV		:= $(PACKAGE_RUNNABLE_CODE_DIR)/runnable-code.csv
@@ -199,25 +194,17 @@ $(PACKAGE_SLOC_CSV): $(PACKAGE_METADATA_STATS)
 $(PACKAGE_REVDEPS_CSV): $(PACKAGE_METADATA_STATS)
 	$(MERGE) --in $(@D) --csv-cols "c" --key package --key-use-dirname $(@F)
 
-$(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_COVERAGE_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_EVALS_STATIC_CSV)
+$(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_EVALS_STATIC_CSV)
 	$(RSCRIPT) $(SCRIPTS_DIR)/corpus.R \
     --metadata $(PACKAGE_METADATA_CSV) \
     --functions $(PACKAGE_FUNCTIONS_CSV) \
     --revdeps $(PACKAGE_REVDEPS_CSV) \
     --sloc $(PACKAGE_SLOC_CSV) \
-    --coverage $(PACKAGE_COVERAGE_CSV) \
     --runnable-code $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) \
     --evals-static $(PACKAGE_EVALS_STATIC_CSV) \
     --out-corpus $(CORPUS) \
     --out-corpus-details $(CORPUS_DETAILS) \
     --out-all-details $(CORPUS_ALL_DETAILS)
-
-$(PACKAGE_COVERAGE_STATS):
-	-$(MAP) -t $(TIMEOUT) -f $(PACKAGES_FILE) -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R \
-    --  --type all $(CRAN_DIR)/extracted/{1}
-
-$(PACKAGE_COVERAGE_CSV):
-	$(MERGE) --in $(@D) --csv-cols "ccdd" --key "package" --key-use-dirname $(@F)
 
 ################################
 ## PACKAGES related targets   ##
@@ -425,7 +412,6 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS)
 ###############
 
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
-package-coverage: $(PACKAGE_COVERAGE_CSV) $(PACKAGE_COVERAGE_STATS)
 package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
