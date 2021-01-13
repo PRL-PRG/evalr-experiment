@@ -47,11 +47,13 @@ ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 
 # A template that is used to wrap the extracted runnable code from packages.
 TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
-TRACE_EVAL_RESULTS := calls.fst \
+TRACE_EVAL_RESULTS := \
+  calls.fst \
   code.fst \
   dependencies.fst \
-  lookups.fst \
-  reflection.fst
+  reads.fst \
+  reflection.fst \
+  writes.fst
 
 .PHONY: FORCE
 ########################################################################
