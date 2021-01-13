@@ -482,7 +482,7 @@ endef
 
 define INSTALL_EVALR_LIB
 	echo "$(1)"
-	[ -d "$(1)" ] || git clone ssh://git@github.com/PRL-PRG/$(1)
+	[ -d "$(1)" ] || git clone https://github.com/PRL-PRG/$(1)
 	make -C $(1) install
 endef
 
