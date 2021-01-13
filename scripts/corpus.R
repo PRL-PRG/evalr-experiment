@@ -93,8 +93,7 @@ run <- function(metadata_file,
                 runnable_code_file,
                 evals_static_file,
                 out_corpus_file,
-                out_corpus_details_file,
-                out_all_details_file) {
+                out_corpus_details_file) {
 
   metadata <- process_metadata(read_csv(metadata_file, col_types=cols(
     package = col_character(),
@@ -180,12 +179,11 @@ run <- function(metadata_file,
 
   corpus <-
     all %>%
-      filter(loadable, evals > 0) %>%
+      mutate(in_corpus=loadable & evals > 0) %>%
       arrange(desc(revdeps))
 
-  write_lines(corpus$package, out_corpus_file)
+  write_lines(filter(corpus, in_corpus)$package, out_corpus_file)
   write_fst(corpus, out_corpus_details_file)
-  write_fst(all, out_all_details_file)
 }
 
 option_list <- list(
@@ -204,9 +202,7 @@ option_list <- list(
   make_option("--out-corpus", help="Output corpus.txt file",
               dest="out_corpus_file", metavar="FILE"),
   make_option("--out-corpus-details", help="Output corpus.fst file",
-              dest="out_corpus_details_file", metavar="FILE"),
-  make_option("--out-all-details", help="Output corpus-all.fst file",
-              dest="out_all_details_file", metavar="FILE")
+              dest="out_corpus_details_file", metavar="FILE")
 )
 
 opt_parser <- OptionParser(option_list=option_list)

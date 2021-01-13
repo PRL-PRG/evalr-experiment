@@ -31,7 +31,6 @@ SCRIPTS_DIR        := $(CURDIR)/scripts
 # A subset of $(PACKAGES); only packages with call sites to eval
 CORPUS             := $(RUN_DIR)/corpus.txt
 CORPUS_DETAILS     := $(RUN_DIR)/corpus.fst
-CORPUS_ALL_DETAILS := $(RUN_DIR)/corpus-all.fst
 
 # remote execution
 ifeq ($(CLUSTER), 1)
@@ -211,7 +210,7 @@ $(PACKAGE_RUNNABLE_CODE_EVAL_CSV): $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 	$(call LOG,MERGING $(@F))
 	$(MERGE) --in $(@D) --csv-cols "ccciii" --key "package" --key-use-dirname $(@F)
 
-$(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_EVALS_STATIC_CSV)
+$(CORPUS) $(CORPUS_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_EVALS_STATIC_CSV)
 	$(call LOG,CORPUS)
 	$(RSCRIPT) $(SCRIPTS_DIR)/corpus.R \
     --metadata $(PACKAGE_METADATA_CSV) \
@@ -221,8 +220,7 @@ $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS): $(PACKAGE_METADATA_FILES) $(P
     --runnable-code $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) \
     --evals-static $(PACKAGE_EVALS_STATIC_CSV) \
     --out-corpus $(CORPUS) \
-    --out-corpus-details $(CORPUS_DETAILS) \
-    --out-all-details $(CORPUS_ALL_DETAILS)
+    --out-corpus-details $(CORPUS_DETAILS)
 
 ########################################################################
 # PACKAGES
@@ -427,7 +425,7 @@ package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE
 package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
 
 .PHONY: corpus
-package-corpus: $(CORPUS) $(CORPUS_DETAILS) $(CORPUS_ALL_DETAILS)
+package-corpus: $(CORPUS) $(CORPUS_DETAILS)
 
 .PHONY: package-run
 package-run: $(PACKAGE_RUN_STATS)
