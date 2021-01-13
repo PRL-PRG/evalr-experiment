@@ -46,7 +46,6 @@ process_sloc <- function(raw) {
     group_by(package, language) %>%
     summarise(code=sum(code)) %>%
     spread(key=language, value=code, fill=0) %>%
-    mutate(package_code=package_native_code + package_r_code) %>%
     ungroup()
 }
 
@@ -97,12 +96,80 @@ run <- function(metadata_file,
                 out_corpus_details_file,
                 out_all_details_file) {
 
-  metadata <- process_metadata(read_csv(metadata_file))
-  functions <- process_functions(read_csv(functions_file))
-  sloc <- process_sloc(read_csv(sloc_file))
-  revdeps <- process_revdeps(read_csv(revdeps_file))
-  runnable_code <- process_runnable_code(read_csv(runnable_code_file))
-  evals_static <- process_evals_static(read_csv(evals_static_file))
+  metadata <- process_metadata(read_csv(metadata_file, col_types=cols(
+    package = col_character(),
+    name = col_character(),
+    version = col_character(),
+    title = col_character(),
+    size = col_double(),
+    loadable = col_logical()
+  )))
+
+  functions <- process_functions(
+    read_csv(
+      functions_file, col_types=cols(
+        package = col_character(),
+        fun = col_character(),
+        exported = col_logical(),
+        is_s3_dispatch = col_logical(),
+        is_s3_method = col_logical(),
+        params = col_character()
+      )
+    )
+  )
+
+  sloc <- process_sloc(
+    read_csv(
+      sloc_file,
+      col_types=cols(
+        package = col_character(),
+        path = col_character(),
+        files = col_double(),
+        language = col_character(),
+        blank = col_integer(),
+        comment = col_integer(),
+        code = col_integer()
+      )
+    )
+  )
+
+  revdeps <- process_revdeps(
+    read_csv(
+      revdeps_file,
+      col_types=cols(
+        package = col_character(),
+        revdep = col_character()
+      )
+    )
+  )
+
+  runnable_code <- process_runnable_code(
+    read_csv(
+      runnable_code_file,
+      col_types=cols(
+        package = col_character(),
+        file = col_character(),
+        type = col_character(),
+        language = col_character(),
+        blank = col_integer(),
+        comment = col_integer(),
+        code = col_integer()
+      )
+    )
+  )
+
+  evals_static <- process_evals_static(
+    read_csv(
+      evals_static_file,
+      col_types=cols(
+        package = col_character(),
+        fun_name = col_character(),
+        srcref = col_character(),
+        call_fun_name = col_character(),
+        args = col_character()
+      )
+    )
+  )
 
   all <- metadata %>%
     left_join(functions, by="package") %>%

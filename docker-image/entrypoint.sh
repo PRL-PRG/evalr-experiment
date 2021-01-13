@@ -5,10 +5,12 @@ USER="r"
 GROUP="r"
 USER_ID=${USER_ID:-1000}
 GROUP_ID=${USER_ID:-1000}
+R_DIR=/R/R-dyntrace
 
 ENV_FILE=/etc/environment
 
-echo "PATH=\"$PATH\"" > $ENV_FILE
+echo "R_DIR=\"$R_DIR\"" > $ENV_FILE
+echo "PATH=\"$PATH\"" >> $ENV_FILE
 echo "OMP_NUM_THREADS=\"$OMP_NUM_THREADS\"" >> $ENV_FILE
 echo "R_COMPILE_PKGS=\"$R_COMPILE_PKGS\"" >> $ENV_FILE
 echo "R_DISABLE_BYTECODE=\"$R_DISABLE_BYTECODE\"" >> $ENV_FILE

@@ -1,13 +1,12 @@
-# signatr-experiment
+# evalr-experiment
 
-This is a skeleton project for running signatr experiments.
-The idea is to have an isolated environment in which one can run the fuzzer.
+This is a skeleton project for running evalr experiments.
 
 ## Getting started guide
 
 ``` sh
-git clone ssh://git@github.com/PRL-PRG/signatr-experiment
-cd signatr-experiment
+git clone ssh://git@github.com/PRL-PRG/evalr-experiment
+cd evalr-experiment
 ```
 **Important: all of the following commands should be run inside the cloned repository!**
 
@@ -24,13 +23,13 @@ we might want to have some local changes to them.
 git clone ssh://git@github.com/PRL-PRG/injectr
 git clone ssh://git@github.com/PRL-PRG/instrumentr
 git clone ssh://git@github.com/PRL-PRG/runr
-git clone ssh://git@github.com/PRL-PRG/signatr
+git clone ssh://git@github.com/PRL-PRG/evil
 ```
 
 Install the dependencies, using the docker image!
 
 ``` sh
-./in-docker.sh make libs
+./in-docker.sh make install-libs
 ```
 
 This should create a `library` directory with the following:
