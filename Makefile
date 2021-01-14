@@ -40,9 +40,12 @@ RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
 MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 
-# extra parameters
+# the number of jobs to run in parallel
+# it is used for GNU parallel and for Ncpus parameter in install.packages
 JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null || grep -c processor /proc/cpuinfo 2>/dev/null || echo 1)
+# TODO: do not rely on GNU parallel timeout, use timeout binary
 TIMEOUT       ?= 35m
+# TODO: change so it is the number of scripts rather than number of packages
 BASE_PACKAGES_TO_RUN_SIZE := 500
 
 # A template that is used to wrap the extracted runnable code from packages.
