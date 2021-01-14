@@ -33,13 +33,6 @@ ifeq ($(CLUSTER), 1)
     JOBS=100%
 endif
 
-# tools
-MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
-R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
-RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
-MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
-ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
-
 # the number of jobs to run in parallel
 # it is used for GNU parallel and for Ncpus parameter in install.packages
 JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null || grep -c processor /proc/cpuinfo 2>/dev/null || echo 1)
@@ -47,6 +40,13 @@ JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null |
 TIMEOUT       ?= 35m
 # TODO: change so it is the number of scripts rather than number of packages
 BASE_PACKAGES_TO_RUN_SIZE := 500
+
+# tools
+MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
+R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
+RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
+MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
+ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 
 # A template that is used to wrap the extracted runnable code from packages.
 TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
