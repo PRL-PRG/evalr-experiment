@@ -476,7 +476,7 @@ snapshot:
 	[ -d $(PACKAGE_PREPROCESS_DIR)/package-backup ] && mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR) || true
 
 define PKG_INSTALL_FROM_FILE
-	$(R) --quiet --no-save -e 'install.packages(setdiff(readLines("$(1)"), installed.packages()), destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=parallel::detectCores())'
+	$(R) --quiet --no-save -e 'install.packages(setdiff(readLines("$(1)"), installed.packages()), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=parallel::detectCores())'
 	find $(CRAN_ZIP_DIR) -name "*.tar.gz" | parallel --bar --workdir CRAN/extracted tar xfz
 endef
 
