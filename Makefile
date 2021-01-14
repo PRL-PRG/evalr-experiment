@@ -41,7 +41,7 @@ MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 
 # extra parameters
-JOBS          ?= $(shell $(RSCRIPT) -e 'cat(parallel::detectCores())')
+JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null || grep -c processor /proc/cpuinfo 2>/dev/null || echo 1)
 TIMEOUT       ?= 35m
 BASE_PACKAGES_TO_RUN_SIZE := 500
 
