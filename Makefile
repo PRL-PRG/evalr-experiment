@@ -476,9 +476,10 @@ snapshot:
 	[ -d $(PACKAGE_PREPROCESS_DIR)/package-backup ] && mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR) || true
 
 define PKG_INSTALL_FROM_FILE
-	$(R) --quiet --no-save -e 'install.packages(setdiff(readLines("$(1)"), installed.packages()), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=parallel::detectCores())'
+	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages()), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=$(JOBS))'
 	find $(CRAN_ZIP_DIR) -name "*.tar.gz" | parallel --bar --workdir CRAN/extracted tar xfz
 endef
+
 
 define INSTALL_EVALR_LIB
 	echo "$(1)"
