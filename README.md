@@ -35,9 +35,39 @@ Install libraries
 docker% make libs
 ```
 
-Install packages
+Install packages from `packages.txt`. This has to be done every time, this file
+changes.
 
 ``` sh
 docker% make install-packages
 ```
 
+## The pipeline
+
+### Tracing CRAN packages
+
+To trace packages, run:
+
+``` sh
+docker% make package-trace-eval
+```
+
+The result should be always in in `run/package-trace-eval`. Older runs will be
+renamed to `run/package-trace-eval.<X>`.
+
+To preprocess the data, run:
+
+``` sh
+docker% make package-preprocess
+```
+
+The result should be always in in `run/preprocess/package`. Older runs will be
+renamed to `run/preprocess/package.<X>`. The preprocess will always use the
+latest data from the `package-trace-eval` task. It will not trigger a new
+tracing.
+
+### Tracing core packages
+
+### Tracing Kaggle
+
+## Debugging when something is wrong
