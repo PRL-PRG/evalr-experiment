@@ -13,11 +13,6 @@ PACKAGES_CORE_FILE := packages-core.txt
 
 GLOBAL_EVALS_TO_TRACE_FILE := $(CURDIR)/global-evals-to-trace.txt
 
-# extra parameters
-JOBS          ?= $(shell nproc --all)
-TIMEOUT       ?= 35m
-BASE_PACKAGES_TO_RUN_SIZE := 500
-
 # environment
 CRAN_LOCAL_MIRROR  := file://$(CRAN_DIR)
 CRAN_SRC_DIR       := $(CRAN_DIR)/extracted
@@ -44,6 +39,11 @@ R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
 RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
 MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
+
+# extra parameters
+JOBS          ?= $(shell $(RSCRIPT) -e 'cat(parallel::detectCores())')
+TIMEOUT       ?= 35m
+BASE_PACKAGES_TO_RUN_SIZE := 500
 
 # A template that is used to wrap the extracted runnable code from packages.
 TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
