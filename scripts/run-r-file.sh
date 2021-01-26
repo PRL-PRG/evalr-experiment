@@ -47,7 +47,7 @@ cmd=""
 
 [ -n "$TIMEOUT" ] && cmd="timeout $TIMEOUT"
 
-cmd="$cmd R -f $file --no-save --quiet --no-readline"
+cmd="$cmd R -f $file --no-save --no-echo --quiet --no-readline"
 
 if [ -n "$VERBOSE" ]; then
     $cmd | tee "$output" 2>&1
