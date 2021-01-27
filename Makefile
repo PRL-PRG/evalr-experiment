@@ -521,10 +521,22 @@ libs: injectr instrumentr evil runr
 install-packages:
 	$(call PKG_INSTALL_FROM_FILE,$(PACKAGES))
 
-.PHONY: local-env
-local-env:
-	@echo "export R_LIBS=$(LIBRARY_DIR)"
-	@echo "export PATH=$(R_DIR)/bin:$$PATH"
+define INFO
+  @echo "$(1)=$($(1))"
+endef
+
+.PHONY: envir
+envir:
+	$(call INFO,CRAN_LOCAL_MIRROR)
+	$(call INFO,CRAN_DIR)
+	$(call INFO,CURDIR)
+	$(call INFO,LIBRARY_DIR)
+	$(call INFO,R_BIN)
+	$(call INFO,RUN_DIR)
+	@echo "---"
+	$(call INFO,JOBS)
+	$(call INFO,TIMEOUT)
+
 DOCKER_SHELL_CONTAINER_NAME := "$$USER-evalr-shell"
 
 .PHONY: shell
