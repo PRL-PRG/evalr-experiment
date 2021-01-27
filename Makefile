@@ -525,12 +525,13 @@ install-packages:
 local-env:
 	@echo "export R_LIBS=$(LIBRARY_DIR)"
 	@echo "export PATH=$(R_DIR)/bin:$$PATH"
+DOCKER_SHELL_CONTAINER_NAME := "$$USER-evalr-shell"
 
 .PHONY: shell
 shell:
 	docker run \
     --rm \
-    --name "$$USER-evalr-shell" \
+    --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f 'name=$(DOCKER_SHELL_CONTAINER_NAME)' | wc -l)" \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -e USER_ID=$$(id -u) \
