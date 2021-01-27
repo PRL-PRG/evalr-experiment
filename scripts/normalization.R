@@ -15,7 +15,7 @@ str_op <- c("paste", "paste0", "str_c")
 comp_op <- c("<", ">", "<=", ">=", "==", "!=")
 bool_op <- c("&", "&&", "|", "||", "!")
 
-canonic_expr <- function(exp) {
+canonic_expr <- function(exp, keep.names = FALSE) {
     if (is.call(exp)) {
         function_name <- exp[[1]]
         function_args <- exp[-1]
@@ -108,7 +108,6 @@ parse_program_arguments <- function() {
     )
     opt_parser <- OptionParser(option_list = option_list)
     arguments <- parse_args(opt_parser)
-    arguments$options$help <- NULL
 
     arguments
 }
@@ -117,18 +116,23 @@ main <- function() {
     now_first <- Sys.time()
     arguments <- parse_program_arguments()
 
-    str(arguments)
-
     cat("\n")
 
     now <- Sys.time()
-    cat("Read and deduplicate ", arguments$expressions_file, "\n")
+    cat("Read ", arguments$expressions_file, "\n")
     expressions <- read_fst(arguments$expressions_file) %>%
         tibble() %>%
-        select(-file) %>%
-        unique()
+        select(-file)
     res <- difftime(Sys.time(), now)
     cat("Done in ", res, units(res), "\n")
+
+    now <- Sys.time()
+    cat("Deduplicate from", nrow(expressions))
+    expressions <- expressions %>%
+        unique()
+    res <- difftime(Sys.time(), now)
+    cat(" to ", nrow(expressions), " rows.\nDone in ", res, units(res), "\n")
+
 
     now <- Sys.time()
     cat("Normalize \n")
