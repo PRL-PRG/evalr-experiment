@@ -150,7 +150,7 @@ simplify <- function(expr_resolved) {
     # Var?
     res <- str_replace_all(expr_resolved, "(?:c|list)\\((:?[^\\(]*,\\s)*(?:\\.[:alpha]|[:alpha:])[[:alpha:][:digit:]_\\.]*(:?\\s,[^\\(]*)*\\)", "c(VAR)")
     # Only digits?
-    res <- str_replace_all(res, "(?:c|list)\\(((?:\\d*(\\.\\d*)?L?,\\s)*\\d*(\\.\\d*)?L?)\\)", replacement = "c(1)")
+    res <- str_replace_all(res, "[^[:alpha:]]((?:-?\\d*(\\.\\d*)?L?,\\s*)*-?\\d+(\\.\\d*)?L?)", replacement = "1") # will not detect .55
     res
 }
 
