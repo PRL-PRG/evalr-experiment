@@ -146,11 +146,16 @@ canonic_expr_str <- function(exp, with.names = FALSE) {
     }
 }
 
-simplify_digits <- function(expr_resolved) {
+simplify <- function(expr_resolved) {
+    # Var?
+    res <- str_replace_all(expr_resolved, "(?:c|list)\\((:?[^\\(]*,\\s)*(?:\\.[:alpha]|[:alpha:])[[:alpha:][:digit:]_\\.]*(:?\\s,[^\\(]*)*\\)", "c(VAR)")
     # Only digits?
-    str_replace_all(expr_resolved, "(?:c|list)\\(((?:\\d*(\\.\\d*)?,\\s)*\\d*(\\.\\d*)?)\\)", replacement = "c(1)")
+    res <- str_replace_all(res, "(?:c|list)\\(((?:\\d*(\\.\\d*)?L?,\\s)*\\d*(\\.\\d*)?L?)\\)", replacement = "c(1)")
+    res
 }
 
+
+simplify_var <-
 
 parse_program_arguments <- function() {
     option_list <- list(
