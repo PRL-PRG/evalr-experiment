@@ -247,7 +247,7 @@ main <- function() {
 
   if(arguments$validate) {
       cat("Validate \n")
-      stopifnot(is.na(expr_resolved) | !is.na(expr_canonic))
+      stopifnot(is.na(expressions$expr_resolved) | !is.na(expressions$expr_canonic))
       res <- difftime(Sys.time(), now)
       cat("Done in ", res, units(res), "\n")
   }
