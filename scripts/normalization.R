@@ -157,8 +157,10 @@ canonic_expr_str <- function(exp, with.names = FALSE) {
 }
 
 simplify <- function(expr_resolved) {
-  # Numbers, including hexadecimal ones
-  res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?(?:0x)?[abcdef\\d]+(\\.\\d*)?L?),\\s*)*(?:NA|-?(?:0x)?[abcdef\\d]+(\\.\\d*)?L?)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
+  # Numbers
+  res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?\\d+(\\.\\d*)?L?),\\s*)*(?:NA|-?\\d+(\\.\\d*)?L?)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
+  # Hexadecimals
+  res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?0x[abcdef\\d]+),\\s*)*(?:NA|-?0x[abcdef\\d]+)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
   # Strings
   res <- gsub(x = res, pattern = "(?=[^\\\\])(?:\"[^\"]*\",\\s*)*\"[^\"]*\"", replacement = "\"\"", perl = TRUE, useBytes = TRUE)
   # Booleans
