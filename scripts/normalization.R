@@ -203,9 +203,16 @@ main <- function() {
 
 
     now <- Sys.time()
+    cat("Simplify \n")
+    expressions <- expressions %>%
+        mutate(expr_prepass = simplify(expr_resolved))
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
+
+    now <- Sys.time()
     cat("Normalize \n")
     expressions <- expressions %>%
-        mutate(expr_canonic = map_chr(expr_resolved, canonic_expr_str, with.names = arguments$keep_names)) # , .keep = "unused"
+        mutate(expr_canonic = map_chr(expr_prepass, canonic_expr_str, with.names = arguments$keep_names)) # , .keep = "unused"
     res <- difftime(Sys.time(), now)
     cat("Done in ", res, units(res), "\n")
 
