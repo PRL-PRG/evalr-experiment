@@ -147,15 +147,16 @@ canonic_expr_str <- function(exp, with.names = FALSE) {
 }
 
 simplify <- function(expr_resolved) {
-    # Var?
-    res <- str_replace_all(expr_resolved, "(?:c|list)\\((:?[^\\(]*,\\s)*(?:\\.[:alpha]|[:alpha:])[[:alpha:][:digit:]_\\.]*(:?\\s,[^\\(]*)*\\)", "c(VAR)")
-    # Only digits?
-    res <- str_replace_all(res, "(?=[^[:alpha:]])(?:-?\\d*(\\.\\d*)?L?,\\s*)*-?\\d+(\\.\\d*)?L?", replacement = "1") # will not detect .55
+     # Numbers, including hexadecimal ones
+    res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?(?:0x)?[abcdef\\d]+(\\.\\d*)?L?),\\s*)*(?:NA|-?(?:0x)?[abcdef\\d]+(\\.\\d*)?L?)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
+    # Strings
+    res <- gsub(x = res, pattern = "(?=[^\\\\])(?:\"[^\"]*\",\\s*)*\"[^\"]*\"", replacement = "\"\"", perl = TRUE, useBytes = TRUE)
+    # Booleans
+    res <- gsub(x = res, pattern = "(?:(?:TRUE|FALSE),\\s*)*(?:TRUE|FALSE)", replacement = "TRUE", perl = TRUE, useBytes = TRUE)
     res
 }
 
 
-simplify_var <-
 
 parse_program_arguments <- function() {
     option_list <- list(
