@@ -152,7 +152,7 @@ canonic_expr_str <- function(exp, with.names = FALSE) {
     return(canonic_expr(ast, with.names))
   }
   else {
-    return("NORMALIZATION ERROR")
+    return(NA_character_)
   }
 }
 
@@ -219,12 +219,12 @@ main <- function() {
   cat(" to ", nrow(expressions), " rows.\nDone in ", res, units(res), "\n")
 
 
-  now <- Sys.time()
-  cat("Simplify \n")
-  expressions <- expressions %>%
-    mutate(expr_prepass = simplify(expr_resolved))
-  res <- difftime(Sys.time(), now)
-  cat("Done in ", res, units(res), "\n")
+  # now <- Sys.time()
+  # cat("Simplify \n")
+  # expressions <- expressions %>%
+  #   mutate(expr_prepass = simplify(expr_resolved))
+  # res <- difftime(Sys.time(), now)
+  # cat("Done in ", res, units(res), "\n")
 
   now <- Sys.time()
   cat("Sanitize \n")
