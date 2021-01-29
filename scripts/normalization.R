@@ -229,7 +229,7 @@ main <- function() {
   now <- Sys.time()
   cat("Sanitize \n")
   expressions <- expressions %>%
-    mutate(expr_prepass = sanitize_specials(expr_prepass))
+    mutate(expr_prepass = sanitize_specials(expr_resolved))
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
