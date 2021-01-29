@@ -219,25 +219,25 @@ main <- function() {
   cat(" to ", nrow(expressions), " rows.\nDone in ", res, units(res), "\n")
 
 
-  # now <- Sys.time()
-  # cat("Simplify \n")
-  # expressions <- expressions %>%
-  #   mutate(expr_prepass = simplify(expr_resolved))
-  # res <- difftime(Sys.time(), now)
-  # cat("Done in ", res, units(res), "\n")
+  now <- Sys.time()
+  cat("Simplify \n")
+  expressions <- expressions %>%
+    mutate(expr_prepass = simplify(expr_resolved))
+  res <- difftime(Sys.time(), now)
+  cat("Done in ", res, units(res), "\n")
 
   now <- Sys.time()
   cat("Sanitize \n")
   expressions <- expressions %>%
-    mutate(expr_prepass = sanitize_specials(expr_resolved))
+    mutate(expr_prepass = sanitize_specials(expr_prepass))
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
   now <- Sys.time()
   cat("Normalize \n")
   expressions <- expressions %>%
-    mutate(expr_canonic = map_chr(expr_prepass, canonic_expr_str, with.names = arguments$keep_names)) %>%
-    select(-expr_prepass)
+    mutate(expr_canonic = map_chr(expr_prepass, canonic_expr_str)) #%>%
+    #select(-expr_prepass)
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
