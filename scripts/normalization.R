@@ -5,6 +5,7 @@
 
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(tidyr))
 library(stringr)
 library(fst)
 library(optparse)
@@ -193,8 +194,12 @@ parse_program_arguments <- function() {
       action = "store_true", dest = "keep_names", default = FALSE,
     ),
     make_option(
-        c("--validate"),
-        action = "store_true", dest = "validate", default = FALSE,
+      c("--validate"),
+      action = "store_true", dest = "validate", default = FALSE,
+    ),
+    make_option(
+      c("--keep-errors"),
+      action = "store_true", dest = "errors", default = FALSE,
     )
   )
   opt_parser <- OptionParser(option_list = option_list)
@@ -241,17 +246,25 @@ main <- function() {
 
   now <- Sys.time()
   cat("Normalize \n")
-  expressions <- expressions %>%
-    mutate(expr_canonic = map_chr(expr_prepass, canonic_expr_str)) #%>%
-    #select(-expr_prepass)
+  if (arguments$errors) {
+    expressions <- expressions %>%
+      mutate(expr_canonic_res = map(expr_prepass, safely(canonic_expr_str))) %>%
+      unnest_wider(expr_canonic_res) %>%
+      rename(expr_canonic = result)
+  }
+  else {
+    expressions <- expressions %>%
+      mutate(expr_canonic = map_chr(expr_prepass, canonic_expr_str)) %>%
+      select(-expr_prepass)
+  }
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
-  if(arguments$validate) {
-      cat("Validate \n")
-      stopifnot(is.na(expressions$expr_resolved) | !is.na(expressions$expr_canonic))
-      res <- difftime(Sys.time(), now)
-      cat("Done in ", res, units(res), "\n")
+  if (arguments$validate) {
+    cat("Validate \n")
+    stopifnot(is.na(expressions$expr_resolved) | !is.na(expressions$expr_canonic))
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
   }
 
   now <- Sys.time()
