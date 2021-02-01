@@ -269,7 +269,7 @@ main <- function() {
       unnest_wider(expr_canonic_res) %>%
       rename(expr_canonic = result)
   }
-  else if(argument$quicker) {
+  else if(arguments$quicker) {
       expressions <- expressions %>%
           mutate(expr_canonic = map_chr(expr_prepass, normalize_expr_str)) %>%
           select(-expr_prepass)
