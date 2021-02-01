@@ -157,6 +157,19 @@ canonic_expr_str <- function(exp, with.names = FALSE) {
   }
 }
 
+normalize_expr_str <- function(exp, with.names = FALSE) {
+    ast <- NA
+    try(ast <- parse(text = exp)[[1]], silent = TRUE)
+    # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
+    if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
+        return(evil:::normalize_expr(ast))
+    }
+    else {
+        return(NA_character_)
+    }
+}
+
+
 simplify <- function(expr_resolved) {
   # Numbers
   res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?\\d+(\\.\\d*)?L?),\\s*)*(?:NA|-?\\d+(\\.\\d*)?L?)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
@@ -200,6 +213,10 @@ parse_program_arguments <- function() {
     make_option(
       c("--keep-errors"),
       action = "store_true", dest = "errors", default = FALSE,
+    ),
+    make_option(
+        c("--quicker"),
+        action = "store_true", dest = "quicker", default = FALSE,
     )
   )
   opt_parser <- OptionParser(option_list = option_list)
@@ -251,6 +268,11 @@ main <- function() {
       mutate(expr_canonic_res = map(expr_prepass, safely(canonic_expr_str))) %>%
       unnest_wider(expr_canonic_res) %>%
       rename(expr_canonic = result)
+  }
+  else if(argument$quicker) {
+      expressions <- expressions %>%
+          mutate(expr_canonic = map_chr(expr_prepass, normalize_expr_str)) %>%
+          select(-expr_prepass)
   }
   else {
     expressions <- expressions %>%
