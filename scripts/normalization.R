@@ -9,6 +9,8 @@ suppressPackageStartupMessages(library(tidyr))
 library(stringr)
 library(fst)
 library(optparse)
+library(pbapply)
+library(evil)
 
 
 arith_op <- c("/", "-", "*", "+", "^", "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":")
@@ -162,7 +164,7 @@ normalize_expr_str <- function(exp, with.names = FALSE) {
     try(ast <- parse(text = exp)[[1]], silent = TRUE)
     # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
     if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
-        return(evil:::normalize_expr(ast))
+        return(normalize_expr(ast))
     }
     else {
         return(NA_character_)
@@ -183,7 +185,7 @@ simplify <- function(expr_resolved) {
 }
 
 sanitize_specials <- function(exp) {
-  # everythin printed as <blabla> out of a string won't be parse again
+  # everything printed as <blabla> out of a string won't be parse again
   # We wrap it into a string and then sanitize
   # There can be pointer, weak reference, and environment
   res <- gsub(x = exp, pattern = "<pointer: [^>]*>", replacement = "\"<POINTER>\"", perl = TRUE, useBytes = TRUE)
@@ -227,6 +229,7 @@ parse_program_arguments <- function() {
 
 main <- function() {
   now_first <- Sys.time()
+  op <- pboptions(type="timer")
   arguments <- parse_program_arguments()
 
   cat("\n")
@@ -271,7 +274,7 @@ main <- function() {
   }
   else if(arguments$quicker) {
       expressions <- expressions %>%
-          mutate(expr_canonic = map_chr(expr_prepass, normalize_expr_str)) %>%
+          mutate(expr_canonic = pbapply(expr_prepass, normalize_expr_str, cl = parallel::detectCores() - 1)) %>%
           select(-expr_prepass)
   }
   else {
