@@ -219,6 +219,10 @@ parse_program_arguments <- function() {
     make_option(
         c("--quicker"),
         action = "store_true", dest = "quicker", default = FALSE,
+    ),
+    make_option(
+        c("--parallel"),
+        action = "store_true", dest = "parallel", default = FALSE,
     )
   )
   opt_parser <- OptionParser(option_list = option_list)
@@ -273,8 +277,10 @@ main <- function() {
       rename(expr_canonic = result)
   }
   else if(arguments$quicker) {
+      cl <- if(arguments$parallel) {parallel::detectCores() - 1} else {1}
+      cat("Using ", cl, " cores.\n")
       expressions <- expressions %>%
-          mutate(expr_canonic = pblapply(expr_prepass, normalize_expr_str, cl = parallel::detectCores() - 1)) %>%
+          mutate(expr_canonic = map_chr(expr_prepass, normalize_expr_str)) %>%
           select(-expr_prepass)
   }
   else {
