@@ -9,7 +9,6 @@ suppressPackageStartupMessages(library(tidyr))
 library(stringr)
 library(fst)
 library(optparse)
-library(pbapply)
 library(evil)
 
 
