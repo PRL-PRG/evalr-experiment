@@ -274,7 +274,7 @@ main <- function() {
   }
   else if(arguments$quicker) {
       expressions <- expressions %>%
-          mutate(expr_canonic = pbapply(expr_prepass, normalize_expr_str, cl = parallel::detectCores() - 1)) %>%
+          mutate(expr_canonic = pblapply(expr_prepass, normalize_expr_str, cl = parallel::detectCores() - 1)) %>%
           select(-expr_prepass)
   }
   else {
