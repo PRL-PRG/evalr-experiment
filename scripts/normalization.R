@@ -188,8 +188,8 @@ sanitize_specials <- function(exp) {
   # everything printed as <blabla> out of a string won't be parse again
   # We wrap it into a string and then sanitize
   # There can be pointer, weak reference, and environment
-  res <- gsub(x = exp, pattern = "<pointer: [^>]*>", replacement = "\"<POINTER>\"", perl = TRUE, useBytes = TRUE)
-  res <- gsub(x = res, pattern = "<environment: [^>]*>", replacement = "\"<ENVIRONMENT>\"", perl = TRUE, useBytes = TRUE)
+  res <- gsub(x = exp, pattern = "<pointe[^>]*>", replacement = "\"<POINTER>\"", perl = TRUE, useBytes = TRUE)
+  res <- gsub(x = res, pattern = "<environment[^>]*>", replacement = "\"<ENVIRONMENT>\"", perl = TRUE, useBytes = TRUE)
   gsub(x = res, pattern = "<weak reference>", replacement = "\"<WEAK REFERENCE>\"", fixed = TRUE, useBytes = TRUE)
 }
 
