@@ -227,12 +227,40 @@ parse_program_arguments <- function() {
     make_option(
       c("--simplify"),
       action = "store_true", dest = "simplify", default = FALSE,
+    ),
+    make_option(
+      c("--benchmark"),
+      action = "store_true", dest = "benchmark", default = FALSE,
     )
   )
   opt_parser <- OptionParser(option_list = option_list)
   arguments <- parse_args(opt_parser)
 
   arguments
+}
+
+time_it <- function(arg, f) {
+  now <- Sys.time()
+  # Would be nice to also get GC time here
+  res <- f(arg)
+  end <- Sys.time()
+  return(list(result = res, duration = end - now))
+}
+
+benchmark <- function(dataset, f, name) {
+  df_res <- list()
+  for (i in 10^(3:5)) {
+    df <- dataset %>% slice_sample(n = i)
+
+    df <- df %>%
+      mutate(expr_canonic_res = pbsapply(expr_prepass, time_it, f, simplify = FALSE, USE.NAMES = FALSE)) %>%
+      unnest_wider(expr_canonic_res) %>%
+      rename(expr_canonic = result) %>%
+      mutate(sample_size = i, size = str_length(expr_prepass))
+
+    df_res[[i]] <- df
+  }
+  bind_rows(df_res) %>% mutate(function_name = name)
 }
 
 main <- function() {
@@ -265,9 +293,6 @@ main <- function() {
     res <- difftime(Sys.time(), now)
     cat("Done in ", res, units(res), "\n")
   }
-  else {
-
-  }
 
 
   now <- Sys.time()
@@ -283,6 +308,24 @@ main <- function() {
 
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
+
+  if (arguments$benchmark) {
+    cat("Benchmarking\n")
+    cat("R implementation\n")
+    gc()
+    gc()
+    df1 <- benchmark(expressions, canonic_expr_str, "R")
+    cat("C implementation\n")
+    gc()
+    gc()
+    df2 <- benchmark(expressions, normalize_expr_str, "C")
+    timings <- bind_rows(df1, df2)
+
+    cat("Output benchmark data\n")
+    timings %>% write_fst(arguments$normalized_expr)
+
+    return(NULL)
+  }
 
   now <- Sys.time()
   cat("Normalize \n")
@@ -335,7 +378,7 @@ main <- function() {
   cat("Total processing time in ", res, units(res), "\n")
 
 
-  invisible(NULL)
+  return(NULL)
 }
 
-main()
+invisible(main())
