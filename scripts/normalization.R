@@ -160,15 +160,15 @@ canonic_expr_str <- function(exp, with.names = FALSE) {
 }
 
 normalize_expr_str <- function(exp, with.names = FALSE) {
-    ast <- NA
-    try(ast <- parse(text = exp)[[1]], silent = TRUE)
-    # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
-    if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
-        return(normalize_expr(ast))
-    }
-    else {
-        return(NA_character_)
-    }
+  ast <- NA
+  try(ast <- parse(text = exp)[[1]], silent = TRUE)
+  # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
+  if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
+    return(normalize_expr(ast))
+  }
+  else {
+    return(NA_character_)
+  }
 }
 
 
@@ -217,12 +217,16 @@ parse_program_arguments <- function() {
       action = "store_true", dest = "errors", default = FALSE,
     ),
     make_option(
-        c("--quicker"),
-        action = "store_true", dest = "quicker", default = FALSE,
+      c("--quicker"),
+      action = "store_true", dest = "quicker", default = FALSE,
     ),
     make_option(
-        c("--parallel"),
-        action = "store_true", dest = "parallel", default = FALSE,
+      c("--parallel"),
+      action = "store_true", dest = "parallel", default = FALSE,
+    ),
+    make_option(
+      c("--simplify"),
+      action = "store_true", dest = "simplify", default = FALSE,
     )
   )
   opt_parser <- OptionParser(option_list = option_list)
@@ -233,7 +237,7 @@ parse_program_arguments <- function() {
 
 main <- function() {
   now_first <- Sys.time()
-  op <- pboptions(type="timer")
+  op <- pboptions(type = "timer")
   arguments <- parse_program_arguments()
 
   cat("\n")
@@ -253,18 +257,30 @@ main <- function() {
   res <- difftime(Sys.time(), now)
   cat(" to ", nrow(expressions), " rows.\nDone in ", res, units(res), "\n")
 
+  if (arguments$simplify) {
+    now <- Sys.time()
+    cat("Simplify \n")
+    expressions <- expressions %>%
+      mutate(expr_prepass = simplify(expr_resolved))
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
+  }
+  else {
 
-  now <- Sys.time()
-  cat("Simplify \n")
-  expressions <- expressions %>%
-    mutate(expr_prepass = simplify(expr_resolved))
-  res <- difftime(Sys.time(), now)
-  cat("Done in ", res, units(res), "\n")
+  }
+
 
   now <- Sys.time()
   cat("Sanitize \n")
-  expressions <- expressions %>%
-    mutate(expr_prepass = sanitize_specials(expr_prepass))
+  expressions <- if (arguments$simplify) {
+    expressions %>%
+      mutate(expr_prepass = sanitize_specials(expr_prepass))
+  }
+  else {
+    expressions %>%
+      mutate(expr_prepass = sanitize_specials(expr_resolved))
+  }
+
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
@@ -276,12 +292,23 @@ main <- function() {
       unnest_wider(expr_canonic_res) %>%
       rename(expr_canonic = result)
   }
-  else if(arguments$quicker) {
-      cl <- if(arguments$parallel) {parallel::detectCores() - 1} else {1}
-      cat("Using ", cl, " cores.\n")
-      expressions <- expressions %>%
-          mutate(expr_canonic = map_chr(expr_prepass, normalize_expr_str)) %>%
-          select(-expr_prepass)
+  else if (arguments$quicker) {
+    cl <- if (arguments$parallel) {
+      parallel::detectCores() - 1
+    } else {
+      1
+    }
+    # It is actually much smaller in parallel
+    cat("Using ", cl, " cores.\n")
+    expressions <- expressions %>%
+      mutate(expr_canonic = pbsapply(expr_prepass, normalize_expr_str, USE.NAMES = FALSE, cl = cl)) %>%
+      select(-expr_prepass)
+
+    # expressions <- expressions %>%
+    #     mutate(expr_canonic = pblapply(expr_prepass, normalize_expr_str, cl = cl)) %>%
+    #     select(-expr_prepass)
+    # Problems with strings...
+    # Or use  pbsapply(a, function(s) str_length(s), USE.NAMES = FALSE) ?
   }
   else {
     expressions <- expressions %>%
