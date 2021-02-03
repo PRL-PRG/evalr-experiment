@@ -248,12 +248,14 @@ time_it <- function(arg, f) {
 }
 
 benchmark <- function(dataset, f, name) {
+  g <- possibly(f, otherwise = "ERROR")
   df_res <- list()
   for (i in 10^(3:5)) {
+    cat("With ", i, " rows\n")
     df <- dataset %>% slice_sample(n = i)
 
     df <- df %>%
-      mutate(expr_canonic_res = pbsapply(expr_prepass, time_it, f, simplify = FALSE, USE.NAMES = FALSE)) %>%
+      mutate(expr_canonic_res = pbsapply(expr_prepass, time_it, g, simplify = FALSE, USE.NAMES = FALSE)) %>%
       unnest_wider(expr_canonic_res) %>%
       rename(expr_canonic = result) %>%
       mutate(sample_size = i, size = str_length(expr_prepass))
