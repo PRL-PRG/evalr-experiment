@@ -25,6 +25,7 @@ image:
 .node-setup: image
 	@if [ ! -d $(LIBRARY_DIR) ]; then echo "Library dir: '$(LIBRARY_DIR)' does not exist"; exit 1; fi
 	@if [ ! -d $(CRAN_DIR) ]; then echo "CRAN dir '$(CRAN_DIR)'' does not exist"; exit 1; fi
+	rm -f $(SSH_CONTROL_FILE_PREFIX)*$(HOSTNAME)*
 	-docker rm -f $(WORKER_NAME) 2>/dev/null
 	docker run \
       --rm \
@@ -48,6 +49,7 @@ image:
   tasks=$$([ $$? -eq 0 ] && ps -o pid= --ppid $$ppid | wc -l || echo 0); \
   load=$$(uptime | sed "s/.*load average: //"); \
   echo "$(HOSTNAME): load: $$load, tasks: $$tasks"
+	@TERM=xterm make envir
 
 
 NODES_ALL := $(patsubst %, node/%, $(HOSTS))

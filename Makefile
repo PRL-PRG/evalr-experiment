@@ -11,8 +11,6 @@ PACKAGES := packages.txt
 # the 13 packages that comes with R inc base
 PACKAGES_CORE_FILE := packages-core.txt
 
-GLOBAL_EVALS_TO_TRACE_FILE := $(CURDIR)/global-evals-to-trace.txt
-
 # environment
 CRAN_LOCAL_MIRROR  := file://$(CRAN_DIR)
 CRAN_SRC_DIR       := $(CRAN_DIR)/extracted
@@ -249,11 +247,11 @@ $(PACKAGE_EVALS_TO_TRACE): $(CORPUS) $(PACKAGE_EVALS_STATIC_CSV)
     --evals-static $(PACKAGE_EVALS_STATIC_CSV) > $@
 
 .PRECIOUS: $(PACKAGE_TRACE_EVAL_STATS)
-$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
+$(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_EVALS_TO_TRACE) $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(call LOG,PACKAGE EVAL TRACING)
 	-$(MAP) -f $(PACKAGE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    --env EVALS_TO_TRACE_FILE \
+    --env EVALS_TO_TRACE \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
 
 $(PACKAGE_TRACE_EVAL_FILES): $(PACKAGE_TRACE_EVAL_STATS)
@@ -281,10 +279,10 @@ $(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
 .PRECIOUS: $(BASE_TRACE_EVAL_STATS)
-$(BASE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(realpath $(PACKAGES_CORE_FILE))
+$(BASE_TRACE_EVAL_STATS): export EVALS_TO_TRACE=$(realpath $(PACKAGES_CORE_FILE))
 $(BASE_TRACE_EVAL_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
-    --env EVALS_TO_TRACE_FILE \
+    --env EVALS_TO_TRACE \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
 
 $(BASE_TRACE_EVAL_FILES): $(BASE_TRACE_EVAL_STATS)
@@ -339,8 +337,8 @@ $(KAGGLE_RUN_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
     -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
 
 .PRECIOUS: $(KAGGLE_TRACE_EVAL_STATS)
-$(KAGGLE_TRACE_EVAL_STATS): export EVALS_TO_TRACE_FILE=$(GLOBAL_EVALS_TO_TRACE_FILE)
-$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR) $(GLOBAL_EVALS_TO_TRACE_FILE)
+$(KAGGLE_TRACE_EVAL_STATS): export EVALS_TO_TRACE="global"
+$(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
 	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
     -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel.R
@@ -521,20 +519,33 @@ libs: injectr instrumentr evil runr
 install-packages:
 	$(call PKG_INSTALL_FROM_FILE,$(PACKAGES))
 
-.PHONY: local-env
-local-env:
-	@echo "export R_LIBS=$(LIBRARY_DIR)"
-	@echo "export PATH=$(R_DIR)/bin:$$PATH"
+define INFO
+  @echo "$(1)=$($(1))"
+endef
+
+.PHONY: envir
+envir:
+	$(call INFO,CRAN_LOCAL_MIRROR)
+	$(call INFO,CRAN_DIR)
+	$(call INFO,CURDIR)
+	$(call INFO,LIBRARY_DIR)
+	$(call INFO,R_BIN)
+	$(call INFO,RUN_DIR)
+	@echo "---"
+	$(call INFO,JOBS)
+	$(call INFO,TIMEOUT)
+
+DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
 
 .PHONY: shell
 shell:
 	docker run \
     --rm \
-    --name "$$USER-evalr-shell" \
+    --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l)" \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -e USER_ID=$$(id -u) \
-    -e GROUP_ID=$$(getent group r | cut -d: -f3) \
+    -e GROUP_ID=$$(id -g) \
     -e R_LIBS=$(LIBRARY_DIR) \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \
@@ -550,7 +561,7 @@ rstudio:
     -p "$$PORT:8787" \
     -v "$(CURDIR):$(CURDIR)" \
     -e USERID=$$(id -u) \
-    -e GROUPID=$$(getent group r | cut -d: -f3) \
+    -e GROUPID=$$(id -g) \
     -e ROOT=true \
     -e DISABLE_AUTH=true \
     $(DOCKER_RSTUDIO_IMAGE_NAME)
