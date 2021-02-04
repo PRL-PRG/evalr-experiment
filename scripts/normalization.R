@@ -12,6 +12,14 @@ library(optparse)
 library(pbapply)
 library(evil)
 
+with_timeout <- function(expr, elapsed){
+  expr <- substitute(expr)
+  envir <- parent.frame()
+  setTimeLimit(cpu = elapsed, elapsed = elapsed, transient = TRUE)
+  on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE))
+  eval(expr, envir = envir)
+}
+
 
 arith_op <- c("/", "-", "*", "+", "^", "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":")
 str_op <- c("paste", "paste0", "str_c")
@@ -241,8 +249,11 @@ parse_program_arguments <- function() {
 
 time_it <- function(arg, f) {
   now <- Sys.time()
+
+  res <- "ABORTED"
   # Would be nice to also get GC time here
-  res <- f(arg)
+  try(res <- with_timeout(f(arg), elapsed = 60 * 5))
+
   end <- Sys.time()
   return(list(result = res, duration = end - now))
 }
