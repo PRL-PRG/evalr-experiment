@@ -12,7 +12,7 @@ library(optparse)
 library(pbapply)
 library(evil)
 
-with_timeout <- function(expr, elapsed){
+with_timeout <- function(expr, elapsed) {
   expr <- substitute(expr)
   envir <- parent.frame()
   setTimeLimit(cpu = elapsed, elapsed = elapsed, transient = TRUE)
@@ -137,8 +137,8 @@ canonic_expr <- function(exp, with.names = FALSE) {
     return("BOOL")
   }
   else if (typeof(exp) == "character") {
-    if(is.na(exp)) {
-        return("STR")
+    if (is.na(exp)) {
+      return("STR")
     }
     if (exp == "<POINTER>") {
       return("PTR")
@@ -262,21 +262,13 @@ time_it <- function(arg, f) {
 }
 
 benchmark <- function(dataset, f, name) {
-  g <- possibly(f, otherwise = "ERROR")
-  df_res <- list()
-  for (i in 10^(3:5)) {
-    cat("With ", i, " rows\n")
-    df <- dataset %>% slice_sample(n = i)
-
-    df <- df %>%
-      mutate(expr_canonic_res = pbsapply(expr_prepass, time_it, g, simplify = FALSE, USE.NAMES = FALSE)) %>%
-      unnest_wider(expr_canonic_res) %>%
-      rename(expr_canonic = result) %>%
-      mutate(sample_size = i, size = str_length(expr_prepass))
-
-    df_res[[i]] <- df
-  }
-  bind_rows(df_res) %>% mutate(function_name = name)
+  i <- nrow(dataset)
+  dataset %>%
+    mutate(expr_canonic_res = pbsapply(expr_prepass, time_it, f, simplify = FALSE, USE.NAMES = FALSE)) %>%
+    unnest_wider(expr_canonic_res) %>%
+    rename(expr_canonic = result) %>%
+    mutate(sample_size = i, size = str_length(expr_prepass)) %>%
+    mutate(function_name = name)
 }
 
 main <- function() {
@@ -327,15 +319,22 @@ main <- function() {
 
   if (arguments$benchmark) {
     cat("Benchmarking\n")
-    cat("R implementation\n")
-    gc()
-    gc()
-    df1 <- benchmark(expressions, canonic_expr_str, "R")
-    cat("C implementation\n")
-    gc()
-    gc()
-    df2 <- benchmark(expressions, normalize_expr_str, "C")
-    timings <- bind_rows(df1, df2)
+    cat("R implementation vs C implementation\n")
+    df_res <- list()
+    for (i in 10^(3:5)) {
+      cat("With ", i, " rows\n")
+      df <- expressions %>% slice_sample(n = i)
+      cat("R implementation: \n")
+      gc()
+      df1 <- benchmark(df, canonic_expr_str, "R")
+      df_res[[i]] <- df1
+      cat("C implementation: \n")
+      gc()
+      df2 <- benchmark(df, normalize_expr_str, "C")
+      df_res[[i]] <- df2
+    }
+
+    timings <- bind_rows(df_res) %>% select(-expr_resolved)
 
     cat("Output benchmark data\n")
     timings %>% write_fst(arguments$normalized_expr)
