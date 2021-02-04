@@ -534,11 +534,13 @@ shell:
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -e USER_ID=$$(id -u) \
-    -e GROUP_ID=$$(getent group r | cut -d: -f3) \
+    -e GROUP_ID=505 \
     -e R_LIBS=$(LIBRARY_DIR) \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \
     bash
+
+#  $$(getent group r | cut -d: -f3) \
 
 .PHONY: rstudio
 rstudio:
@@ -550,10 +552,12 @@ rstudio:
     -p "$$PORT:8787" \
     -v "$(CURDIR):$(CURDIR)" \
     -e USERID=$$(id -u) \
-    -e GROUPID=$$(getent group r | cut -d: -f3) \
+    -e GROUPID=505 \
     -e ROOT=true \
     -e DISABLE_AUTH=true \
     $(DOCKER_RSTUDIO_IMAGE_NAME)
+
+# $$(getent group r | cut -d: -f3) \
 
 .PHONY: httpd
 httpd:
