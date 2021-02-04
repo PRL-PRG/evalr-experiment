@@ -534,7 +534,7 @@ shell:
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -e USER_ID=$$(id -u) \
-    -e GROUP_ID=$$(getent group r | cut -d: -f3) \
+    -e GROUP_ID=$$(id -g) \
     -e R_LIBS=$(LIBRARY_DIR) \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \
