@@ -137,6 +137,9 @@ canonic_expr <- function(exp, with.names = FALSE) {
     return("BOOL")
   }
   else if (typeof(exp) == "character") {
+    if(is.na(exp)) {
+        return("STR")
+    }
     if (exp == "<POINTER>") {
       return("PTR")
     }
