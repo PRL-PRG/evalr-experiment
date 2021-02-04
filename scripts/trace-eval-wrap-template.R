@@ -1,7 +1,16 @@
-stopifnot(Sys.getenv("EVALS_TO_TRACE_FILE") != "")
+suppressPackageStartupMessages(library(evil))
+
+cat("*** EVALS_TO_TRACE: '", Sys.getenv("EVALS_TO_TRACE"), "'\n", sep="")
 
 traces <- evil::trace_code(
-  evals_to_trace=readLines(Sys.getenv("EVALS_TO_TRACE_FILE")),
+  evals_to_trace={
+    tmp <- Sys.getenv("EVALS_TO_TRACE", NA)
+    if (!is.na(tmp)) {
+      if (file.exists(tmp)) readLines(tmp) else tmp
+    } else {
+      NULL
+    }
+  },
   code={
     .BODY.
   }
@@ -21,8 +30,8 @@ evil::write_trace(
 
 if (instrumentr::is_error(traces$result)) {
   error <- traces$result$error
-  cat("*** ERROR:", error$message, "\n")
-  cat("*** SOURCE:", error$source, "\n")
-  cat("*** CALL:", format(error$call), "\n")
+  cat("*** ERROR: ", error$message, "\n")
+  cat("*** SOURCE: ", error$source, "\n")
+  cat("*** CALL: ", format(error$call), "\n")
   q(status=2, save="no")
 }

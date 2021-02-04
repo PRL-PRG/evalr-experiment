@@ -6,6 +6,7 @@ fst
 lubridate
 magrittr
 optparse
+pbapply
 progress
 purrr
 readr
