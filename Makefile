@@ -561,7 +561,7 @@ rstudio:
     -p "$$PORT:8787" \
     -v "$(CURDIR):$(CURDIR)" \
     -e USERID=$$(id -u) \
-    -e GROUPID=$$(getent group r | cut -d: -f3) \
+    -e GROUPID=$$(id -g) \
     -e ROOT=true \
     -e DISABLE_AUTH=true \
     $(DOCKER_RSTUDIO_IMAGE_NAME)
