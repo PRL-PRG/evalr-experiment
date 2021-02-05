@@ -1,0 +1,125 @@
+---
+title: "Benchmark"
+author: "Pierre Donat-Bouillud"
+date: "04/02/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(fst)
+```
+
+
+```{r load}
+calls <- read_fst("summarized.fst") %>% as_tibble() %>% select(expr_resolved_hash, expr_resolved_nodes)
+
+
+benchmark <- read_fst("benchmark-results.fst") %>% as_tibble() 
+
+benchmark <- benchmark %>% mutate(duration = as.double(duration, units = "secs")) %>% 
+  left_join(calls, by = "expr_resolved_hash")
+
+```
+
+
+We filter out the ones that timed-out.
+```{r}
+expr_timeout <- benchmark %>% filter(expr_canonic == "ABORTED")
+nb_timeout <- nrow(expr_timeout)
+
+benchmark <- benchmark %>% filter(expr_canonic!= "ABORTED")
+```
+
+There are `r nb_timeout` which timed out.
+
+According to the size of the input expression:
+
+```{r}
+benchmark %>% ggplot(aes(x = size, y = duration, colour = function_name)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.2) +
+  scale_y_log10() + 
+  facet_wrap(~sample_size, ncol=1, scales = "free") +
+  labs(x = "size (characters)", y = "duration (seconds)", colour = "Implementation")
+```
+
+
+According to the number of nodes:
+
+```{r}
+benchmark %>% ggplot(aes(x = expr_resolved_nodes, y = duration, colour = function_name)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.2) +
+  facet_wrap(~sample_size, ncol=1, scales = "free") +
+  labs(x = "size (nodes)", y = "duration (seconds)", colour = "Implementation")
+```
+
+And filtering a bit for the large strings:
+
+```{r}
+benchmark %>% filter(size < 10^ 6) %>% 
+  ggplot(aes(x = size, y = duration, colour = function_name)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.2) +
+  #facet_wrap(~sample_size, ncol=1, scales = "free") +
+  labs(x = "size (characters)", y = "duration (seconds)", colour = "Implementation")
+```
+
+```{r}
+benchmark %>% ggplot(aes(x = expr_resolved_nodes, y = duration, colour = function_name)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.2) +
+  labs(x = "size (nodes)", y = "duration (seconds)", colour = "Implementation")
+```
+
+
+
+A few nodes then by size:
+
+```{r}
+benchmark %>% filter(expr_resolved_nodes < 10) %>% 
+  ggplot(aes(x = size, y = duration, colour = function_name)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.2) +
+  #facet_wrap(~sample_size, ncol=1, scales = "free") +
+  labs(x = "size (characters)", y = "duration (seconds)", colour = "Implementation")
+```
+
+
+# C and reallocation
+
+Can we see the reallocation every $100 \times 2^ i$?
+
+
+```{r}
+c_benchmark <- benchmark %>% filter(function_name == "C", size < 10^6) %>% mutate(res_size = str_length(stringi::stri_enc_toutf8(expr_canonic,is_unknown_8bit=TRUE)))
+
+c_benchmark  %>% ggplot(aes(x = size, y = duration)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.2) 
+```
+
+Plotting with respect to the output size...
+
+```{r}
+c_benchmark  %>% ggplot(aes(x = res_size, y = duration)) +
+  geom_smooth() +
+  geom_jitter(alpha=0.1) +
+  geom_vline(xintercept = 100 * 2^(1:10))
+```
+
+
+# GC Pressure?
+
+```{r}
+r_bench <- benchmark %>% filter(function_name == "R")
+
+mean_rb_bench <- r_bench %>% group_by(sample_size) %>% 
+  summarise(mean_dur = weighted.mean(duration, size))
+```
+
