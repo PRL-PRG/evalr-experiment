@@ -327,11 +327,11 @@ main <- function() {
       cat("R implementation: \n")
       gc()
       df1 <- benchmark(df, canonic_expr_str, "R")
-      df_res[[i]] <- df1
+      df_res[[paste0(i, "R")]] <- df1
       cat("C implementation: \n")
       gc()
       df2 <- benchmark(df, normalize_expr_str, "C")
-      df_res[[i]] <- df2
+      df_res[[paste0(i, "C")]] <- df2
     }
 
     timings <- bind_rows(df_res) %>% select(-expr_resolved)
