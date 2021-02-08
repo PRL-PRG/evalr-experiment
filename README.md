@@ -68,6 +68,29 @@ tracing.
 
 ### Tracing core packages
 
+_TBA_
+
 ### Tracing Kaggle
 
+_TBA_
+
 ## Debugging when something is wrong
+
+_TBA_
+
+## Debugging using gdb
+
+The image has both gdb and gdbgui installed.
+To start a gdbgui session do:
+
+```sh
+$ make shell
+docker% R -d 'gdbgui -r'
+Warning: authentication is recommended when serving on a publicly accessible IP address. See gdbgui --help.
+View gdbgui at http://172.17.0.3:5000
+View gdbgui dashboard at http://172.17.0.3:5000/dashboard
+exit gdbgui by pressing CTRL+C
+```
+
+and then connect to the IP address it suggested.
+
