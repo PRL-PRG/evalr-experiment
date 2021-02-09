@@ -175,7 +175,7 @@ normalize_expr_str <- function(exp, with.names = FALSE) {
   try(ast <- parse(text = exp)[[1]], silent = TRUE)
   # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
   if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
-    return(normalize_expr(ast))
+    return(normalize_stats_expr(ast))
   }
   else {
     return(NA_character_)
@@ -242,6 +242,10 @@ parse_program_arguments <- function() {
     make_option(
       c("--benchmark"),
       action = "store_true", dest = "benchmark", default = FALSE,
+    ),
+    make_option(
+      c("--debug"),
+      action = "store_true", dest = "debug", default = FALSE,
     )
   )
   opt_parser <- OptionParser(option_list = option_list)
@@ -337,6 +341,7 @@ main <- function() {
     timings <- bind_rows(df_res) %>% select(-expr_resolved)
 
     cat("Output benchmark data\n")
+    timins <- timings %>% unnest_wider(expr_canonic)
     timings %>% write_fst(arguments$normalized_expr)
 
     return(NULL)
@@ -359,14 +364,14 @@ main <- function() {
     # It is actually much smaller in parallel
     cat("Using ", cl, " cores.\n")
     expressions <- expressions %>%
-      mutate(expr_canonic = pbsapply(expr_prepass, normalize_expr_str, USE.NAMES = FALSE, cl = cl)) %>%
-      select(-expr_prepass)
+      mutate(expr_canonic_res = pbsapply(expr_prepass, normalize_expr_str, USE.NAMES = FALSE, cl = cl)) %>%
+      unnest_wider(expr_canonic_res) %>%
+      select(-...1) %>% # There is a weird additionnal column added here....
+      rename(expr_canonic = str_rep)
 
-    # expressions <- expressions %>%
-    #     mutate(expr_canonic = pblapply(expr_prepass, normalize_expr_str, cl = cl)) %>%
-    #     select(-expr_prepass)
-    # Problems with strings...
-    # Or use  pbsapply(a, function(s) str_length(s), USE.NAMES = FALSE) ?
+    if(!arguments$debug) {
+      expressions <- expressions %>% select(-expr_prepass, -expr_resolved)
+    }
   }
   else {
     expressions <- expressions %>%
