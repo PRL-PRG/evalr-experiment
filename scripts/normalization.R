@@ -200,7 +200,9 @@ normalize_expr_str <- function(expr, with.names = FALSE) {
     # We return NA
     # But it should never happen!
 
-    return(list(str_rep = NA_character_, call_nesting = 0, nb_assigns = 0, root_function = NA_character_))
+    return(list(str_rep = NA_character_, call_nesting = 0,
+                nb_assigns = 0, root_function = NA_character_,
+                model_frame = FALSE, fundef = FALSE))
 }
 
 
