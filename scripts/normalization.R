@@ -10,7 +10,6 @@ library(stringr)
 library(fst)
 library(optparse)
 library(pbapply)
-library(evil)
 
 with_timeout <- function(expr, elapsed) {
   expr <- substitute(expr)
@@ -158,66 +157,34 @@ canonic_expr <- function(exp, with.names = FALSE) {
   }
 }
 
-canonic_expr_str <- function(exp, with.names = FALSE) {
+bacticky <- function(e) {
+  paste0("`", e, "`", collapse = "")
+}
+
+canonic_expr_str <- function(expr, with.names = FALSE) {
+  exp <- if (!is.na(expr) && startsWith(expr, "_")) {
+    bacticky(expr)
+  } else {
+    expr
+  }
   ast <- NA
   try(ast <- parse(text = exp)[[1]], silent = TRUE)
   # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
   if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
     return(canonic_expr(ast, with.names))
   }
-  else {
-    return(NA_character_)
+  # It failed; probably was a special operators
+  # Put `` Should always parse after that!
+  try(ast <- parse(text = bacticky(exp))[[1]], silent = TRUE)
+  if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
+    return(canonic_expr(ast, with.names))
   }
-}
 
-bacticky <- function(e) {
-    paste0("`", e, "`", collapse="")
-}
-
-normalize_expr_str <- function(expr, with.names = FALSE) {
-    exp <- if (!is.na(expr) && startsWith(expr, "_")) {
-        bacticky(expr)
-    } else {
-        expr
-    }
-
-    ast <- NA
-    try(ast <- parse(text = exp)[[1]], silent = TRUE)
-    # some expr_resolved have been truncated so we mark them as FALSE (even though they could be true)
-    if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
-        return(normalize_stats_expr(ast))
-    }
-
-
-    # It failed
-    # Put `` Should always parse after that!
-    try(ast <- parse(text = bacticky(exp))[[1]], silent = TRUE)
-    if (is.symbol(ast) || is.language(ast) || length(ast) > 1 || !is.na(ast)) {
-        return(normalize_stats_expr(ast))
-    }
-
-    # This is hopeless.
-    # We return NA
-    # But it should never happen!
-
-    return(list(str_rep = NA_character_, call_nesting = 0,
-                nb_assigns = 0, root_function = NA_character_,
-                model_frame = FALSE, fundef = FALSE))
+  return(NA_character_)
 }
 
 
 
-simplify <- function(expr_resolved) {
-  # Numbers
-  res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?\\d+(\\.\\d*)?L?),\\s*)*(?:NA|-?\\d+(\\.\\d*)?L?)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
-  # Hexadecimals
-  res <- gsub(x = expr_resolved, pattern = "(?=[^[:alpha:]])(?:(?:NA|-?0x[abcdef\\d]+),\\s*)*(?:NA|-?0x[abcdef\\d]+)", replacement = "1", perl = TRUE, useBytes = TRUE) # will not detect .55
-  # Strings
-  res <- gsub(x = res, pattern = "(?=[^\\\\])(?:\"[^\"]*\",\\s*)*\"[^\"]*\"", replacement = "\"\"", perl = TRUE, useBytes = TRUE)
-  # Booleans
-  res <- gsub(x = res, pattern = "(?:(?:TRUE|FALSE),\\s*)*(?:TRUE|FALSE)", replacement = "TRUE", perl = TRUE, useBytes = TRUE)
-  res
-}
 
 sanitize_specials <- function(exp) {
   # everything printed as <blabla> out of a string won't be parse again
@@ -229,199 +196,112 @@ sanitize_specials <- function(exp) {
 }
 
 parse_program_arguments <- function() {
-    option_list <- list(
-        make_option(
-            c("--expr"),
-            dest = "expressions_file", metavar = "FILE",
-            help = "File with expressions"
-        ),
-        make_option(
-            c("--out-expr"),
-            dest = "normalized_expr", metavar = "FILE"
-        ),
-        make_option(
-            c("--keep-names"),
-            action = "store_true", dest = "keep_names", default = FALSE,
-        ),
-        make_option(
-            c("--validate"),
-            action = "store_true", dest = "validate", default = FALSE,
-        ),
-        make_option(
-            c("--keep-errors"),
-            action = "store_true", dest = "errors", default = FALSE,
-        ),
-        make_option(
-            c("--quicker"),
-            action = "store_true", dest = "quicker", default = FALSE,
-        ),
-        make_option(
-            c("--parallel"),
-            action = "store_true", dest = "parallel", default = FALSE,
-        ),
-        make_option(
-            c("--simplify"),
-            action = "store_true", dest = "simplify", default = FALSE,
-        ),
-        make_option(
-            c("--benchmark"),
-            action = "store_true", dest = "benchmark", default = FALSE,
-        ),
-        make_option(
-            c("--debug"),
-            action = "store_true", dest = "debug", default = FALSE,
-        )
+  option_list <- list(
+    make_option(
+      c("--expr"),
+      dest = "expressions_file", metavar = "FILE",
+      help = "File with expressions"
+    ),
+    make_option(
+      c("--out-expr"),
+      dest = "normalized_expr", metavar = "FILE"
+    ),
+    make_option(
+      c("--keep-names"),
+      action = "store_true", dest = "keep_names", default = FALSE,
+    ),
+    make_option(
+      c("--validate"),
+      action = "store_true", dest = "validate", default = FALSE,
+    ),
+    make_option(
+      c("--keep-errors"),
+      action = "store_true", dest = "errors", default = FALSE,
+    ),
+    make_option(
+      c("--parallel"),
+      action = "store_true", dest = "parallel", default = FALSE,
+    ),
+    make_option(
+      c("--simplify"),
+      action = "store_true", dest = "simplify", default = FALSE,
     )
-    opt_parser <- OptionParser(option_list = option_list)
-    arguments <- parse_args(opt_parser)
+  )
+  opt_parser <- OptionParser(option_list = option_list)
+  arguments <- parse_args(opt_parser)
 
-    arguments
+  arguments
 }
 
-time_it <- function(arg, f) {
-  now <- Sys.time()
-
-  res <- "ABORTED"
-  # Would be nice to also get GC time here
-  try(res <- with_timeout(f(arg), elapsed = 60 * 5))
-
-  end <- Sys.time()
-  return(list(result = res, duration = end - now))
-}
-
-benchmark <- function(dataset, f, name) {
-    i <- nrow(dataset)
-    dataset %>%
-        mutate(expr_canonic_res = pbsapply(expr_prepass, time_it, f, simplify = FALSE, USE.NAMES = TRUE)) %>%
-        unnest_wider(expr_canonic_res) %>%
-        rename(expr_canonic = result) %>%
-        mutate(sample_size = i, size = str_length(expr_prepass)) %>%
-        mutate(function_name = name)
-}
 
 main <- function() {
-    now_first <- Sys.time()
-    op <- pboptions(type = "timer")
-    arguments <- parse_program_arguments()
+  now_first <- Sys.time()
+  op <- pboptions(type = "timer")
+  arguments <- parse_program_arguments()
 
-    cat("\n")
+  cat("\n")
 
-    now <- Sys.time()
-    cat("Read ", arguments$expressions_file, "\n")
-    expressions <- read_fst(arguments$expressions_file) %>%
-        tibble() %>%
-        select(-file)
+  now <- Sys.time()
+  cat("Read ", arguments$expressions_file, "\n")
+  expressions <- read_fst(arguments$expressions_file) %>%
+    tibble() %>%
+    select(-file)
+  res <- difftime(Sys.time(), now)
+  cat("Done in ", res, units(res), "\n")
+
+  now <- Sys.time()
+  cat("Deduplicate from", nrow(expressions))
+  expressions <- expressions %>%
+    unique()
+  res <- difftime(Sys.time(), now)
+  cat(" to ", nrow(expressions), " rows.\nDone in ", res, units(res), "\n")
+
+
+  now <- Sys.time()
+  cat("Sanitize \n")
+  expressions <- expressions %>%
+    mutate(expr_prepass = sanitize_specials(expr_resolved))
+
+
+  res <- difftime(Sys.time(), now)
+  cat("Done in ", res, units(res), "\n")
+
+
+  now <- Sys.time()
+  cat("Normalize \n")
+
+  cl <- if (arguments$parallel) {
+    parallel::detectCores() - 1
+  } else {
+    1
+  }
+  # It is actually much slower in parallel
+  cat("Using ", cl, " cores.\n")
+  expressions <- expressions %>%
+    mutate(expr_canonic = pbsapply(expr_prepass, canonic_expr_str, simplify = TRUE, USE.NAMES = FALSE, cl = cl))
+
+
+  res <- difftime(Sys.time(), now)
+  cat("Done in ", res, units(res), "\n")
+
+  if (arguments$validate) {
+    cat("Validate \n")
+    stopifnot(is.na(expressions$expr_resolved) | !is.na(expressions$expr_canonic))
     res <- difftime(Sys.time(), now)
     cat("Done in ", res, units(res), "\n")
+  }
 
-    now <- Sys.time()
-    cat("Deduplicate from", nrow(expressions))
-    expressions <- expressions %>%
-        unique()
-    res <- difftime(Sys.time(), now)
-    cat(" to ", nrow(expressions), " rows.\nDone in ", res, units(res), "\n")
+  now <- Sys.time()
+  cat("Output to ", arguments$normalized_expr, "\n")
+  expressions %>% write_fst(arguments$normalized_expr)
+  res <- difftime(Sys.time(), now)
+  cat("Done in ", res, units(res), "\n")
 
-    if (arguments$simplify) {
-        now <- Sys.time()
-        cat("Simplify \n")
-        expressions <- expressions %>%
-            mutate(expr_prepass = simplify(expr_resolved))
-        res <- difftime(Sys.time(), now)
-        cat("Done in ", res, units(res), "\n")
-    }
+  res <- difftime(Sys.time(), now_first)
+  cat("Total processing time in ", res, units(res), "\n")
 
 
-    now <- Sys.time()
-    cat("Sanitize \n")
-    expressions <- if (arguments$simplify) {
-        expressions %>%
-            mutate(expr_prepass = sanitize_specials(expr_prepass))
-    }
-    else {
-        expressions %>%
-            mutate(expr_prepass = sanitize_specials(expr_resolved))
-    }
-
-    res <- difftime(Sys.time(), now)
-    cat("Done in ", res, units(res), "\n")
-
-    if (arguments$benchmark) {
-        cat("Benchmarking\n")
-        cat("R implementation vs C implementation\n")
-        df_res <- list()
-        for (i in 10^(3:5)) {
-            cat("With ", i, " rows\n")
-            df <- expressions %>% slice_sample(n = i)
-            cat("R implementation: \n")
-            gc()
-            df1 <- benchmark(df, canonic_expr_str, "R")
-            df_res[[paste0(i, "R")]] <- df1
-            cat("C implementation: \n")
-            gc()
-            df2 <- benchmark(df, normalize_expr_str, "C")
-            df_res[[paste0(i, "C")]] <- df2
-        }
-
-        timings <- bind_rows(df_res) %>% select(-expr_resolved)
-
-        cat("Output benchmark data\n")
-        timins <- timings %>% unnest_wider(expr_canonic)
-        timings %>% write_fst(arguments$normalized_expr)
-
-        return(NULL)
-    }
-
-    now <- Sys.time()
-    cat("Normalize \n")
-    if (arguments$errors) {
-        expressions <- expressions %>%
-            mutate(expr_canonic_res = map(expr_prepass, safely(canonic_expr_str))) %>%
-            unnest_wider(expr_canonic_res) %>%
-            rename(expr_canonic = result)
-    }
-    else if (arguments$quicker) {
-        cl <- if (arguments$parallel) {
-            parallel::detectCores() - 1
-        } else {
-            1
-        }
-        # It is actually much slower in parallel
-        cat("Using ", cl, " cores.\n")
-        expressions <- expressions %>%
-            mutate(expr_canonic_res = pbsapply(expr_prepass, normalize_expr_str, simplify = FALSE, USE.NAMES = FALSE, cl = cl)) %>%
-            unnest_wider(expr_canonic_res) %>%
-            rename(expr_canonic = str_rep)
-
-        if (!arguments$debug) {
-            expressions <- expressions %>% select(-expr_prepass, -expr_resolved)
-        }
-    }
-    else {
-        expressions <- expressions %>%
-            mutate(expr_canonic = map_chr(expr_prepass, canonic_expr_str)) %>%
-            select(-expr_prepass)
-    }
-    res <- difftime(Sys.time(), now)
-    cat("Done in ", res, units(res), "\n")
-
-    if (arguments$validate) {
-        cat("Validate \n")
-        stopifnot(is.na(expressions$expr_resolved) | !is.na(expressions$expr_canonic))
-        res <- difftime(Sys.time(), now)
-        cat("Done in ", res, units(res), "\n")
-    }
-
-    now <- Sys.time()
-    cat("Output to ", arguments$normalized_expr, "\n")
-    expressions %>% write_fst(arguments$normalized_expr)
-    res <- difftime(Sys.time(), now)
-    cat("Done in ", res, units(res), "\n")
-
-    res <- difftime(Sys.time(), now_first)
-    cat("Total processing time in ", res, units(res), "\n")
-
-
-    return(NULL)
+  return(NULL)
 }
 
 invisible(main())
