@@ -557,7 +557,7 @@ DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
 shell:
 	docker run \
     --rm \
-    --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l)" \
+    --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l | tr -d '[:space:]')" \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -e USER_ID=$$(id -u) \
