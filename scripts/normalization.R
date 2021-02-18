@@ -12,20 +12,20 @@ normalize <- function(e) {
   ast <- NA
   if(is.null(e)) stop("parse() can't deal with NULL")
   try(ast <- parse(text = e), silent = TRUE)
-  if (!is.expression(ast))  ast <- parse(text = "X") 
+  if (!is.expression(ast))  ast <- parse(text = "X")
   # Parsing fails, when the expression is an operator such as +, semantically
   # this a lookup of the symbol '+', for our purposes we can replace with X.
   return(normalize_stats_expr(ast))
 }
 
 opt_parser <- OptionParser(option_list = list(
-  make_option(c("--f"), dest="file", metavar="FILE"),
-  make_option(c("--o"), dest="out", metavar = "FILE")))
+  make_option(c("-f"), dest="file", metavar="FILE"),
+  make_option(c("-o"), dest="out", metavar = "FILE")))
 args <- parse_args(opt_parser)
 
 args<- "ho"
 args$file <- "data/resolved-expressions.fst"
-  
+
 read_fst(args$file) %>%
   tibble() %>%
   select(-file) %>%
@@ -44,7 +44,7 @@ data.frame(ls) -> df2
 df2 %>% write_csv(file=args$out)
 
   unnest_wider(res) %>%
-  rename(expr_canonic = str_rep) %>% 
+  rename(expr_canonic = str_rep) %>%
   write_csv(file=args$out)
 
 
