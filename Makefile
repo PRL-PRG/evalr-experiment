@@ -396,7 +396,8 @@ $(PACKAGE_NORMALIZED_EXPR_FILE): $(PACKAGE_RESOLVED_EXPRESSIONS)
 	$(RSCRIPT) $(SCRIPTS_DIR)/normalization.R \
     --expr $< \
     --out-expr $@  \
-    --quicker
+    --quicker \
+    --parallel
 
 $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
@@ -447,9 +448,9 @@ package-run: $(PACKAGE_RUN_STATS)
 package-trace-eval:
 	$(ROLLBACK) $(PACKAGE_TRACE_EVAL_DIR)
 	@$(MAKE) $(PACKAGE_TRACE_EVAL_FILES)
-	
+
 .PHONY: package-normalization
-package-normalization: 
+package-normalization:
 	$(ROLLBACK) $(PACKAGE_PREPROCESS_DIR)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
 
