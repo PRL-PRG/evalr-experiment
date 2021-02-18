@@ -9,7 +9,7 @@ library(optparse)
 library(evil)
 
 args <- parse_args(OptionParser(option_list = list(
-    make_option(c("-f"), dest="file", metavar="FILE"))))
+    make_option(c("-f", "--file"), dest="file", metavar="FILE"))))
 
 read_fst(args$file) %>% tibble() %>% select(-file) %>% unique() -> df
 
