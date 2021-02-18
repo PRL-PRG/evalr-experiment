@@ -381,7 +381,7 @@ main <- function() {
     }
     else if (arguments$quicker) {
         cl <- if (arguments$parallel) {
-            min(parallel::detectCores() - 1, 4)
+            max(min(parallel::detectCores() - 1, 4), 1)
         } else {
             1
         }
