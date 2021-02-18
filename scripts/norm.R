@@ -27,7 +27,7 @@ normalize_it <- function(i) {
   if (!is.expression(ast))  ast <- parse(text = "X")
   # Parsing fails, when the expression is an operator such as +, semantically
   # this a lookup of the symbol '+', for our purposes we can replace with X.
-  normalize(df$hash[i], ast)
+  normalize(df$expr_resolved_hash[i], ast)
 }
 
 sapply(1:length(r), normalize_it, USE.NAMES = F) -> ignore
