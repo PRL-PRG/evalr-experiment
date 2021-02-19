@@ -22,9 +22,12 @@ normalize_it <- function(i) {
   if(is.null(e)) stop("parse() can't deal with NULL")
   try(ast <- parse(text = e), silent = TRUE)
   if (!is.expression(ast))  ast <- parse(text = "X")
+
+  trimmed <- gsub("\"", "", strtrim(e, 50), fixed = TRUE, useBytes = TRUE)
+  trimmed <- gsub("'", "", trimmed, fixed = TRUE, useBytes = TRUE)
   # Parsing fails, when the expression is an operator such as +, semantically
   # this a lookup of the symbol '+', for our purposes we can replace with X.
-  normalize(df$expr_resolved_hash[i], ast, strtrim(e, 50))
+  normalize(df$expr_resolved_hash[i], ast, trimmed)
 }
 
 sapply(1:length(r), normalize_it, USE.NAMES = F) -> ignore
