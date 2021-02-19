@@ -1,12 +1,9 @@
 #!/usr/bin/env Rscript
 
 suppressPackageStartupMessages(library(dplyr))
-#suppressPackageStartupMessages(library(purrr))
-#suppressPackageStartupMessages(library(tidyr))
-#library(readr)
 library(fst)
 library(optparse)
-library(evil)
+suppressPackageStartupMessages(library(evil))
 
 args <- parse_args(OptionParser(option_list = list(
     make_option(c("-f", "--file"), dest="file", metavar="FILE"))))
@@ -27,7 +24,7 @@ normalize_it <- function(i) {
   if (!is.expression(ast))  ast <- parse(text = "X")
   # Parsing fails, when the expression is an operator such as +, semantically
   # this a lookup of the symbol '+', for our purposes we can replace with X.
-  normalize(df$expr_resolved_hash[i], ast)
+  normalize(df$expr_resolved_hash[i], ast, strtrim(e, 50))
 }
 
 sapply(1:length(r), normalize_it, USE.NAMES = F) -> ignore
