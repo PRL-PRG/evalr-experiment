@@ -22,6 +22,8 @@ RUN mkdir -p /run/sshd && \
   sed -ri 's/^#?MaxSessions\s+.*/MaxSessions 500/' /etc/ssh/sshd_config && \
   sed -ri 's/^#?X11Forwarding\s+.*/X11Forwarding no/' /etc/ssh/sshd_config
 
+RUN sed -ri 's/^#?\s*StrictHostKeyChecking\s+.*/StrictHostKeyChecking no/' /etc/ssh/ssh_config
+
 # latest GNU parallel
 RUN mkdir parallel && \
     cd parallel && \

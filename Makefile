@@ -501,8 +501,8 @@ endef
 
 
 define INSTALL_EVALR_LIB
-	echo "$(1)"
-	[ -d "$(1)" ] || git clone https://github.com/PRL-PRG/$(1)
+	$(call LOG,Installing evalr library: $(1))
+	if [ -d "$(1)" ]; then git -C $(1) pull; else git clone https://github.com/PRL-PRG/$(1); fi
 	make -C $(1) install
 endef
 
@@ -554,6 +554,8 @@ envir:
 
 DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
 
+SHELL_CMD ?= bash
+
 .PHONY: shell
 shell:
 	docker run \
@@ -561,12 +563,14 @@ shell:
     --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l | tr -d '[:space:]')" \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
+    -v $$(readlink -f $$SSH_AUTH_SOCK):/ssh-agent \
+    -e SSH_AUTH_SOCK=/ssh-agent \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
     -e R_LIBS=$(LIBRARY_DIR) \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \
-    bash
+    $(SHELL_CMD)
 
 .PHONY: rstudio
 rstudio:
@@ -582,6 +586,16 @@ rstudio:
     -e ROOT=true \
     -e DISABLE_AUTH=true \
     $(DOCKER_RSTUDIO_IMAGE_NAME)
+
+.PHONY: docker-image
+docker-image:
+	$(MAKE) -C docker-image
+
+.PHONY: update-all
+update-all:
+	docker pull prlprg/r-dyntrace:r-4.0.2
+	$(MAKE) docker-image
+	$(MAKE) shell SHELL_CMD="make libs"
 
 .PHONY: httpd
 httpd:
