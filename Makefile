@@ -37,7 +37,7 @@ JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null |
 # TODO: do not rely on GNU parallel timeout, use timeout binary
 TIMEOUT       ?= 35m
 # TODO: change so it is the number of scripts rather than number of packages
-BASE_PACKAGES_TO_RUN_SIZE := 500
+BASE_SCRIPTS_TO_RUN_SIZE := 10000
 
 # tools
 MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
@@ -263,15 +263,18 @@ $(PACKAGE_TRACE_EVAL_FILES): $(PACKAGE_TRACE_EVAL_STATS)
 ########################################################################
 
 $(BASE_EVALS_STATIC_STATS): $(PACKAGES_CORE_FILE)
+	$(call LOG,EXTRACT EVAL CALLSITES: $(@F))
 	-$(MAP) -t $(TIMEOUT) -f $< -o $(@D) -e $(SCRIPTS_DIR)/package-evals-static.R \
     -- --type package --out $(notdir $(BASE_EVALS_STATIC_CSV)) {1}
 
 $(BASE_EVALS_STATIC_CSV): $(BASE_EVALS_STATIC_STATS)
+	$(call LOG,MERGING $(@F))
 	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
 
 $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
+	$(call LOG,LIST OF SCRIPTS TO RUN: $(@F))
 	-$(RSCRIPT) -e \
-    'glue::glue("{package}/{file}", .envir=subset(read.csv("$<"), package %in% readLines("$(CORPUS)")[1:$(BASE_PACKAGES_TO_RUN_SIZE)]))' > $@
+    'head(glue::glue("{package}/{file}", .envir=read.csv("$<")),$(BASE_SCRIPTS_TO_RUN_SIZE))' > $@
 
 .PRECIOUS: $(BASE_RUN_STATS)
 $(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
@@ -281,11 +284,13 @@ $(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
 .PRECIOUS: $(BASE_TRACE_EVAL_STATS)
 $(BASE_TRACE_EVAL_STATS): export EVALS_TO_TRACE=$(realpath $(PACKAGES_CORE_FILE))
 $(BASE_TRACE_EVAL_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
+	$(call LOG,EVAL TRACING $(@F))
 	-$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_EVAL_DIR)/{1}
 
 $(BASE_TRACE_EVAL_FILES): $(BASE_TRACE_EVAL_STATS)
+	$(call LOG,MERGING $(@F))
 	$(MERGE) --in $(@D) $(@F)
 
 ########################################################################
