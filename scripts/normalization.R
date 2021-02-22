@@ -244,8 +244,7 @@ main <- function() {
   now <- Sys.time()
   cat("Read ", arguments$expressions_file, "\n")
   expressions <- read_fst(arguments$expressions_file) %>%
-    tibble() %>%
-    select(-file)
+    tibble()
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
