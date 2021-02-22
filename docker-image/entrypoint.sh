@@ -16,6 +16,7 @@ echo "R_COMPILE_PKGS=\"$R_COMPILE_PKGS\"" >> $ENV_FILE
 echo "R_DISABLE_BYTECODE=\"$R_DISABLE_BYTECODE\"" >> $ENV_FILE
 echo "R_ENABLE_JIT=\"$R_ENABLE_JIT\"" >> $ENV_FILE
 echo "R_KEEP_PKG_SOURCE=\"$R_KEEP_PKG_SOURCE\"" >> $ENV_FILE
+echo "SSH_AUTH_SOCK=\"$SSH_AUTH_SOCK\"" >> $ENV_FILE
 [[ -n "$R_LIBS" ]] && echo "R_LIBS=\"$R_LIBS\"" >> $ENV_FILE
 
 groupmod -g $GROUP_ID $GROUP &>/dev/null

@@ -22,6 +22,8 @@ RUN mkdir -p /run/sshd && \
   sed -ri 's/^#?MaxSessions\s+.*/MaxSessions 500/' /etc/ssh/sshd_config && \
   sed -ri 's/^#?X11Forwarding\s+.*/X11Forwarding no/' /etc/ssh/sshd_config
 
+RUN sed -ri 's/^#?\s*StrictHostKeyChecking\s+.*/StrictHostKeyChecking no/' /etc/ssh/ssh_config
+
 # latest GNU parallel
 RUN mkdir parallel && \
     cd parallel && \
@@ -36,8 +38,9 @@ RUN wget -O /tmp/fd.deb https://github.com/sharkdp/fd/releases/download/v8.2.1/f
   dpkg -i /tmp/fd.deb && \
   rm -f /tmp/fd.deb
 
-# install gdbgui
 RUN pip3 install gdbgui
+
+RUN pip3 install scan-build
 
 ENV R_PROJECT_BASE_DIR="/R" \
     TERM=xterm
