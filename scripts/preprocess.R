@@ -577,10 +577,6 @@ parse_program_arguments <- function() {
       c("--out"),
       action = "store", dest = "out_name", default = NA, type = "character",
       help = "Use that name to build all the output file names."
-    ),
-    make_option(
-      c("--out-summarized-reflection"),
-      dest = "reflection_summarized_file", metavar = "FILE"
     )
   )
 
