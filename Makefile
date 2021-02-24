@@ -398,11 +398,9 @@ $(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRA
 
 $(PACKAGE_NORMALIZED_EXPR_FILE): $(PACKAGE_RESOLVED_EXPRESSIONS)
 	$(call LOG,Normalization)
-	$(RSCRIPT) $(SCRIPTS_DIR)/normalization.R \
-    --expr $< \
-    --out-expr $@  \
-    --quicker \
-    --parallel
+	$(RSCRIPT) $(SCRIPTS_DIR)/norm.R \
+    -f $< \
+    > $@ 
 
 $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
