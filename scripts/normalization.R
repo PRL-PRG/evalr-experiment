@@ -153,7 +153,7 @@ canonic_expr <- function(exp, with.names = FALSE) {
     }
   }
   else {
-    return(deparse1(exp))
+    return(paste0(deparse(exp, width.cutoff = 500L), collapse = " "))
   }
 }
 
