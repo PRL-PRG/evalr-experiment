@@ -310,6 +310,7 @@ $(BASE_TRACE_EVAL_FILES): $(BASE_TRACE_EVAL_STATS)
 ## turn the kernel metadata JSON file into CSV so it is easier to use
 ## I did not have much success with jq tool
 $(KAGGLE_KORPUS_METADATA_CSV): $(KAGGLE_KORPUS_DIR)
+	$(call LOG,KORPUS METADATA: $(@F))
 	$(SCRIPTS_DIR)/kaggle-metadata-json2csv.R $(KAGGLE_KORPUS_DIR) $(KAGGLE_KORPUS_METADATA_CSV)
 
 ## 1. Extracts the kernel code into `kernel.R` and its metadata including file
@@ -317,9 +318,10 @@ $(KAGGLE_KORPUS_METADATA_CSV): $(KAGGLE_KORPUS_DIR)
 ##    call sites.
 ## 2. Link the downloaded datasets into kaggle-kernel so the ../input works
 $(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_METADATA_CSV)
-	-csvcut -c competition,id $< | \
+	$(call LOG,EXTRACTING KERNELS: $(@F))
+	-$(SCRIPTS_DIR)/csvcut.R -c competition,id $< | \
      $(MAP) -f - -o $(@D) -w $(@D)/{1}/{2} -e $(SCRIPTS_DIR)/kaggle.sh \
-     --csv --skip-first-line --shuf \
+     -C ',' --skip-first-line --shuf \
      -- $(KAGGLE_KORPUS_DIR)/{2}/script/kernel-metadata.json \
         $(notdir $(KAGGLE_KERNELS_R)) \
         $(notdir $(KAGGLE_KERNELS_CSV)) \
@@ -328,27 +330,33 @@ $(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_METADATA_CSV)
 	fd --type d --max-depth 1 . $(KAGGLE_DATASET_DIR) -x ln -sfT {} $(KAGGLE_KERNELS_DIR)/{/}/input
 
 $(KAGGLE_KERNELS_CSV): $(KAGGLE_KERNELS_STATS)
+	$(call LOG,MERGING: $(@F))
 	$(MERGE) --in $(@D) --csv-cols "ccccciiic" --key "package" --key-use-dirname $(@F)
 
 $(KAGGLE_KERNELS_EVALS_STATIC_CSV): $(KAGGLE_KERNELS_STATS)
+	$(call LOG,MERGING: $(@F))
 	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
 
 $(KAGGLE_SCRIPTS_TO_RUN_TXT): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
+	$(call LOG,LIST OF SCRIPTS TO RUN: $(@F))
 	$(SCRIPTS_DIR)/kaggle-scripts-to-run.R --metadata $(KAGGLE_KERNELS_CSV) --evals-static $(KAGGLE_KERNELS_EVALS_STATIC_CSV) > $@
 
 .PRECIOUS: $(KAGGLE_RUN_STATS)
 $(KAGGLE_RUN_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
+	$(call LOG,KAGGLE RUN: $(@F))
 	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel-original.R
 
 .PRECIOUS: $(KAGGLE_TRACE_EVAL_STATS)
 $(KAGGLE_TRACE_EVAL_STATS): export EVALS_TO_TRACE="global"
 $(KAGGLE_TRACE_EVAL_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
+	$(call LOG,KAGGLE EVAL TRACING: $(@F))
 	-$(MAP) -f $(KAGGLE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE_FILE \
     -- -t $(KAGGLE_TIMEOUT) $(KAGGLE_KERNELS_DIR)/{1}/kernel.R
 
 $(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
+	$(call LOG,MERGING: $(@F))
 	$(MERGE) --in $(@D) $(@F)
 
 ########################################################################
@@ -364,7 +372,7 @@ PACKAGE_SUM_EXTERNALS_FILE	:= $(PACKAGE_PREPROCESS_DIR)/summarized-externals.fst
 PACKAGE_SUM_UNDEFINED_FILE	:= $(PACKAGE_PREPROCESS_DIR)/undefined.fst
 PACKAGE_PREPROCESS_FILES    := \
   $(PACKAGE_SUM_FILE) $(PACKAGE_SUM_EXTERNALS_FILE) $(PACKAGE_SUM_UNDEFINED_FILE) $(PACKAGE_SUM_REFLECTION_FILE)
-PACKAGE_NORMALIZED_EXPR_FILE := $(PACKAGE_PREPROCESS_DIR)/normalized-expressions.fst
+PACKAGE_NORMALIZED_EXPR_FILE := $(PACKAGE_PREPROCESS_DIR)/normalized-expressions.csv
 PACKAGE_RESOLVED_EXPRESSIONS := $(PACKAGE_TRACE_EVAL_DIR)/resolved-expressions.fst
 
 BASE_PREPROCESS_DIR			 := $(PREPROCESS_DIR)/base
@@ -374,6 +382,8 @@ BASE_SUM_EXTERNALS_FILE	 := $(BASE_PREPROCESS_DIR)/summarized-externals.fst
 BASE_SUM_UNDEFINED_FILE	 := $(BASE_PREPROCESS_DIR)/undefined.fst
 BASE_PREPROCESS_FILES    := \
   $(BASE_SUM_FILE) $(BASE_SUM_EXTERNALS_FILE) $(BASE_SUM_UNDEFINED_FILE) $(BASE_SUM_REFLECTION_FILE)
+BASE_NORMALIZED_EXPR_FILE := $(BASE_PREPROCESS_DIR)/normalized-expressions.csv
+BASE_RESOLVED_EXPRESSIONS := $(BASE_TRACE_EVAL_DIR)/resolved-expressions.fst
 
 KAGGLE_PREPROCESS_DIR			 := $(PREPROCESS_DIR)/kaggle
 KAGGLE_SUM_FILE						 := $(KAGGLE_PREPROCESS_DIR)/summarized.fst
@@ -382,6 +392,8 @@ KAGGLE_SUM_EXTERNALS_FILE	 := $(KAGGLE_PREPROCESS_DIR)/summarized-externals.fst
 KAGGLE_SUM_UNDEFINED_FILE	 := $(KAGGLE_PREPROCESS_DIR)/undefined.fst
 KAGGLE_PREPROCESS_FILES    := \
   $(KAGGLE_SUM_FILE) $(KAGGLE_SUM_EXTERNALS_FILE) $(KAGGLE_SUM_UNDEFINED_FILE) $(KAGGLE_SUM_REFLECTION_FILE)
+KAGGLE_NORMALIZED_EXPR_FILE := $(KAGGLE_PREPROCESS_DIR)/normalized-expressions.csv
+KAGGLE_RESOLVED_EXPRESSIONS := $(KAGGLE_TRACE_EVAL_DIR)/resolved-expressions.fst
 
 $(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRACE_EVAL_CODE) $(PACKAGE_TRACE_EVAL_REFLECTION)
 	$(call LOG,PREPROCESSING PACKAGE DATA)
@@ -397,10 +409,16 @@ $(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRA
     --out-summarized-reflection $(PACKAGE_SUM_REFLECTION_FILE)
 
 $(PACKAGE_NORMALIZED_EXPR_FILE): $(PACKAGE_RESOLVED_EXPRESSIONS)
-	$(call LOG,Normalization)
-	$(RSCRIPT) $(SCRIPTS_DIR)/norm.R \
-    -f $< \
-    > $@ 
+	$(call LOG,PACKAGE NORMALIZATION $(@F))
+	$(RSCRIPT) $(SCRIPTS_DIR)/norm.R -f $< > $@
+
+$(BASE_NORMALIZED_EXPR_FILE): $(BASE_RESOLVED_EXPRESSIONS)
+	$(call LOG,BASE NORMALIZATION $(@F))
+	$(RSCRIPT) $(SCRIPTS_DIR)/norm.R -f $< > $@
+
+$(KAGGLE_NORMALIZED_EXPR_FILE): $(KAGGLE_RESOLVED_EXPRESSIONS)
+	$(call LOG,KAGGLE NORMALIZATION $(@F))
+	$(RSCRIPT) $(SCRIPTS_DIR)/norm.R -f $< > $@
 
 $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
@@ -454,14 +472,12 @@ package-trace-eval:
 
 .PHONY: package-normalization
 package-normalization:
-	$(ROLLBACK) $(PACKAGE_PREPROCESS_DIR)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
-
 
 .PHONY: package-preprocess
 package-preprocess:
 	$(ROLLBACK) $(PACKAGE_PREPROCESS_DIR)
-	@$(MAKE)  $(PACKAGE_PREPROCESS_FILES)
+	@$(MAKE) $(PACKAGE_PREPROCESS_FILES)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
 
 .PHONY: kaggle-kernels
@@ -474,7 +490,10 @@ kaggle-run: $(KAGGLE_RUN_STATS)
 kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
 
 .PHONY: kaggle-preprocess
-kaggle-preprocess: $(KAGGLE_PREPROCESS_FILES)
+kaggle-preprocess:
+	$(ROLLBACK) $(KAGGLE_PREPROCESS_DIR)
+	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
+	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
 
 .PHONY: base-evals-static
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
@@ -486,7 +505,10 @@ base-run: $(BASE_RUN_STATS)
 base-trace-eval: $(BASE_TRACE_EVAL_FILES)
 
 .PHONY: base-preprocess
-base-preprocess: $(BASE_PREPROCESS_FILES)
+base-preprocess:
+	$(ROLLBACK) $(BASE_PREPROCESS_DIR)
+	@$(MAKE) $(BASE_PREPROCESS_FILES)
+	@$(MAKE) $(BASE_NORMALIZED_EXPR_FILE)
 
 .PHONY: preprocess
 preprocess: package-preprocess base-preprocess kaggle-preprocess
@@ -501,7 +523,6 @@ define PKG_INSTALL_FROM_FILE
 	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages()), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=$(JOBS))'
 	find $(CRAN_ZIP_DIR) -name "*.tar.gz" | parallel --bar --workdir CRAN/extracted tar xfz
 endef
-
 
 define INSTALL_EVALR_LIB
 	$(call LOG,Installing evalr library: $(1))
