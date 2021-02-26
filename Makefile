@@ -595,7 +595,7 @@ rstudio:
 	if [ -z "$$PORT" ]; then echo "Missing PORT"; exit 1; fi
 	docker run \
     --rm \
-    --name "$$USER-evalr-rstudio" \
+    --name "$$USER-evalr-rstudio-$$PORT" \
     -d \
     -p "$$PORT:8787" \
     -v "$(CURDIR):$(CURDIR)" \
