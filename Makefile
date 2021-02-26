@@ -581,6 +581,8 @@ shell:
     --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l | tr -d '[:space:]')" \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
+    -v $$(readlink -f $(CURDIR)/CRAN):$(CURDIR)/CRAN \
+    -v $$(readlink -f $(CURDIR)/library):$(CURDIR)/library \
     -v $$(readlink -f $$SSH_AUTH_SOCK):/ssh-agent \
     -e SSH_AUTH_SOCK=/ssh-agent \
     -e USER_ID=$$(id -u) \
