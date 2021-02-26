@@ -584,6 +584,7 @@ shell:
     -v $$(readlink -f $(CURDIR)/CRAN):$(CURDIR)/CRAN \
     -v $$(readlink -f $(CURDIR)/library):$(CURDIR)/library \
     -v $$(readlink -f $$SSH_AUTH_SOCK):/ssh-agent \
+    -v $$(readlink -f ~/.gitconfig):/home/r/.gitconfig \
     -e SSH_AUTH_SOCK=/ssh-agent \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
