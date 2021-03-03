@@ -1,9 +1,11 @@
 #!/bin/bash
 
-set -Eeo pipefail
-
 while (( "$#" )); do
   case "${1-}" in
+    -n | --no-repeat)
+      NO_REPEAT=1
+      shift
+      ;;
     -v | --verbose)
       VERBOSE=1
       shift
@@ -39,7 +41,17 @@ unset R_LIBS_USER
 cwd="$(pwd)"
 file=$(basename "$1")
 dir=$(dirname "$1")
+path=$(realpath "$1")
 output="$cwd/task-output.txt"
+status="$cwd/task-status.csv"
+
+if [ -f "$status" -a -n "$NO_REPEAT" ]; then
+  exitval=$(sed 's/\([0-9]\+\),.*/\1/' "$status")
+  echo "$1 already ran with $exitval, skipping"
+  exit $exitval
+fi
+
+rm -f "$output" "$status"
 
 cd "$dir"
 
@@ -48,6 +60,8 @@ cmd=""
 [ -n "$TIMEOUT" ] && cmd="timeout $TIMEOUT"
 
 cmd="$cmd R -f $file --no-save --no-echo --quiet --no-readline"
+
+SECONDS=0
 
 if [ -n "$VERBOSE" ]; then
     $cmd | tee "$output" 2>&1
@@ -59,5 +73,6 @@ fi
 
 echo "running: $0 $@" >> $output
 echo "exit: $exitval" >> $output
+echo "$exitval,$SECONDS,\"$(hostname)\",\"$path\"" > $status
 
 exit $exitval
