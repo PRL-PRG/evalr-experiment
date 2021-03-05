@@ -269,7 +269,7 @@ $(BASE_EVALS_STATIC_STATS): $(PACKAGES_CORE_FILE)
 
 $(BASE_EVALS_STATIC_CSV): $(BASE_EVALS_STATIC_STATS)
 	$(call LOG,MERGING $(@F))
-	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
+	$(MERGE) --in $(@D) --csv-cols "cccc" --key "package" --key-use-dirname $(@F)
 
 $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN: $(@F))
@@ -335,7 +335,7 @@ $(KAGGLE_KERNELS_CSV): $(KAGGLE_KERNELS_STATS)
 
 $(KAGGLE_KERNELS_EVALS_STATIC_CSV): $(KAGGLE_KERNELS_STATS)
 	$(call LOG,MERGING: $(@F))
-	$(MERGE) --in $(@D) --csv-cols "cciiiicc" --key "package" --key-use-dirname $(@F)
+	$(MERGE) --in $(@D) --csv-cols "cccc" --key "package" --key-use-dirname $(@F)
 
 $(KAGGLE_SCRIPTS_TO_RUN_TXT): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN: $(@F))
