@@ -2,17 +2,26 @@
 
 library(optparse)
 
-run <- function(columns, delim, header, file) {
-  library(readr)
+read_file <- function(file) {
+  switch(
+    tools::file_ext(file),
+    csv=readr::read_csv(file, col_types=readr::cols()),
+    fst=fst::read_fst(file),
+    stop("unsupported file format: ", file)
+  )
+}
 
-  df <- read_csv(file, col_types = cols())
-  df <- subset(df, select=columns)
-  cat(format_delim(df, delim, col_names=header))
+run <- function(columns, delim, header, file) {
+  df <- read_file(file)
+  if (length(columns) > 0) {
+    df <- subset(df, select=columns)
+  }
+  cat(readr::format_delim(df, delim, col_names=header))
 }
 
 option_list <- list(
   make_option(
-    c("-c", "--columns"),
+    c("-c", "--columns"), default="",
     help="Comma-separated list of columns to select",
     dest="columns", metavar="COLS"
   ),
@@ -29,7 +38,7 @@ option_list <- list(
 )
 
 opt_parser <- OptionParser(option_list=option_list)
-opts <- parse_args(opt_parser,positional_arguments=1)
+opts <- parse_args(opt_parser, positional_arguments=1)
 
 run(
   columns=trimws(strsplit(opts$options$columns, ",")[[1]], which="both"),
