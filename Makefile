@@ -473,6 +473,8 @@ package-preprocess:
 	$(ROLLBACK) $(PACKAGE_PREPROCESS_DIR)
 	@$(MAKE) $(PACKAGE_PREPROCESS_FILES)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
+	cp -f $(CORPUS) $(PACKAGE_PREPROCESS_DIR)/corpus.txt
+	cp -f $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_PREPROCESS_DIR)/evals-static.csv
 
 .PHONY: kaggle-kernels
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
@@ -488,6 +490,8 @@ kaggle-preprocess:
 	$(ROLLBACK) $(KAGGLE_PREPROCESS_DIR)
 	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
 	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
+	parallel -a $(KAGGLE_SCRIPTS_TO_RUN_TXT) -j 1 basename > $(KAGGLE_PREPROCESS_DIR)/corpus.txt
+	cp -f $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_PREPROCESS_DIR)/evals-static.csv
 
 .PHONY: base-evals-static
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
@@ -503,6 +507,9 @@ base-preprocess:
 	$(ROLLBACK) $(BASE_PREPROCESS_DIR)
 	@$(MAKE) $(BASE_PREPROCESS_FILES)
 	@$(MAKE) $(BASE_NORMALIZED_EXPR_FILE)
+	@$(MAKE) $(BASE_EVALS_STATIC_CSV)
+	cp -f $(PACKAGES_CORE_FILE) $(BASE_PREPROCESS_DIR)/corpus.txt
+	cp -f $(BASE_EVALS_STATIC_CSV) $(BASE_PREPROCESS_DIR)/evals-static.csv
 
 .PHONY: preprocess
 preprocess: package-preprocess base-preprocess kaggle-preprocess
