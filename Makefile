@@ -483,7 +483,9 @@ kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGL
 kaggle-run: $(KAGGLE_RUN_STATS)
 
 .PHONY: kaggle-trace-eval
-kaggle-trace-eval: $(KAGGLE_TRACE_EVAL_FILES)
+kaggle-trace-eval:
+	$(ROLLBACK) $(KAGGLE_TRACE_EVAL_DIR)
+	@$(MAKE) $(KAGGLE_TRACE_EVAL_FILES)
 
 .PHONY: kaggle-preprocess
 kaggle-preprocess:
@@ -500,7 +502,10 @@ base-evals-static: $(BASE_EVALS_STATIC_CSV)
 base-run: $(BASE_RUN_STATS)
 
 .PHONY: base-trace-eval
-base-trace-eval: $(BASE_TRACE_EVAL_FILES)
+base-trace-eval:
+	$(ROLLBACK) $(BASE_TRACE_EVAL_DIR)
+	@$(MAKE) $(BASE_TRACE_EVAL_FILES)
+
 
 .PHONY: base-preprocess
 base-preprocess:
