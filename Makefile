@@ -319,9 +319,9 @@ $(KAGGLE_KORPUS_METADATA_CSV): $(KAGGLE_KORPUS_DIR)
 ## 2. Link the downloaded datasets into kaggle-kernel so the ../input works
 $(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_METADATA_CSV)
 	$(call LOG,EXTRACTING KERNELS: $(@F))
-	-$(SCRIPTS_DIR)/csvcut.R -c competition,id $< | \
+	-$(SCRIPTS_DIR)/cat.R -c competition,id $< | \
      $(MAP) -f - -o $(@D) -w $(@D)/{1}/{2} -e $(SCRIPTS_DIR)/kaggle.sh \
-     -C ',' --skip-first-line --shuf \
+     -C ',' --skip-first-line \
      -- $(KAGGLE_KORPUS_DIR)/{2}/script/kernel-metadata.json \
         $(notdir $(KAGGLE_KERNELS_R)) \
         $(notdir $(KAGGLE_KERNELS_CSV)) \
