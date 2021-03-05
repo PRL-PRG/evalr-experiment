@@ -84,7 +84,7 @@ run_file <- function(file) {
 
 option_list <- list(
   make_option(
-    c("--out"), default=stdout(),
+    c("--out"),
     help="Name of the output file",
     dest="out_file", metavar="FILE"
   ),
@@ -110,7 +110,10 @@ df <-  switch(
 )
 
 out_file <- opts$options$out_file
+if (is.null(out_file)) {
+  out_file <- stdout()
+}
 
-if (nrow(df) > 0 && !is.null(out_file)) {
+if (nrow(df) > 0) {
   write.csv(df, out_file, row.names=FALSE)
 }
