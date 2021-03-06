@@ -250,6 +250,7 @@ add_eval_source <- function(df) {
       is.na(eval_call_srcref) & str_detect(file, fixed("kaggle-trace-eval")) ~ str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[, 2],
       is.na(eval_call_srcref) ~ "base?",
       str_starts(eval_call_srcref, fixed("./R/")) ~ "core",
+      str_starts(eval_call_srcref, fixed("/R/")) ~ str_match(eval_call_srcref, "/R/R-dyntrace/library/([^/]*)/R/.*$")[, 2],
       str_starts(eval_call_srcref, fixed("/tmp")) ~ str_match(eval_call_srcref, "/tmp.*/Rtmp[^/]*/R\\.INSTALL[^/]*/([^/]+)/R/.*$")[, 2],
       str_starts(eval_call_srcref, fixed("/mnt/ocfs_vol")) ~ "base", # depends on where the shared is mounted!
       str_starts(eval_call_srcref, fixed("::")) ~ str_match(eval_call_srcref, "::([^:]*)::.*")[, 2],
