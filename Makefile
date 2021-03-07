@@ -431,6 +431,7 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS)
 	-mkdir -p $(@D)
 	$(RSCRIPT) $(SCRIPTS_DIR)/preprocess.R \
     $(PREPROCESS_TYPE) \
+    --corpus $(KAGGLE_PREPROCESS_DIR)/corpus.txt \
     --calls $(KAGGLE_TRACE_EVAL_CALLS) \
     --reflection $(KAGGLE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(KAGGLE_SUM_FILE) \
@@ -490,9 +491,9 @@ kaggle-trace-eval:
 .PHONY: kaggle-preprocess
 kaggle-preprocess:
 	$(ROLLBACK) $(KAGGLE_PREPROCESS_DIR)
+	parallel -a $(KAGGLE_SCRIPTS_TO_RUN_TXT) -j 1 basename > $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
 	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
-	parallel -a $(KAGGLE_SCRIPTS_TO_RUN_TXT) -j 1 basename > $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	cp -f $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_PREPROCESS_DIR)/evals-static.csv
 
 .PHONY: base-evals-static

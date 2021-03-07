@@ -249,7 +249,8 @@ add_eval_source <- function(df) {
       is.na(eval_call_srcref) & caller_package == "foreach" & caller_expression == "e$fun(obj, substitute(ex), parent.frame(), e$data)" ~ "foreach",
       is.na(eval_call_srcref) & str_detect(file, fixed("kaggle-trace-eval")) ~ str_match(file, ".*/kaggle-trace-eval/(.*)/calls.fst")[, 2],
       is.na(eval_call_srcref) ~ "base?",
-      str_starts(eval_call_srcref, fixed("./R/")) ~ "core",
+      str_starts(eval_call_srcref, fixed("./R/refClass.R")) ~ "methods",
+      str_starts(eval_call_srcref, fixed("./R/")) ~ "base",
       str_starts(eval_call_srcref, fixed("/R/")) ~ str_match(eval_call_srcref, "/R/R-dyntrace/library/([^/]*)/R/.*$")[, 2],
       str_starts(eval_call_srcref, fixed("/tmp")) ~ str_match(eval_call_srcref, "/tmp.*/Rtmp[^/]*/R\\.INSTALL[^/]*/([^/]+)/R/.*$")[, 2],
       str_starts(eval_call_srcref, fixed("/mnt/ocfs_vol")) ~ "base", # depends on where the shared is mounted!
@@ -440,11 +441,6 @@ preprocess_calls <- function(arguments) {
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
-  # cat("Adding parse args\n")
-  # now <- Sys.time()
-  # eval_calls <- eval_calls %>% add_parse_args()
-  # res <- difftime(Sys.time(), now)
-  # cat("Done in ", res, units(res), "\n")
 
   # Trim expressions if needed
   if (trim_expressions) {
@@ -481,13 +477,6 @@ preprocess_calls <- function(arguments) {
   eval_calls <- eval_calls %>% filter(eval_source != "base?")
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
-
-  # cat("Number of call sites per package\n")
-  # now <- Sys.time()
-  # calls_site_per_package <-
-  #   known_call_sites(eval_calls, corpus_files)
-  # res <- difftime(Sys.time(), now)
-  # cat("Done in ", res, units(res), "\n")
 
   # Write output files
   cat("Writing output files\n")
