@@ -450,10 +450,14 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(K
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 
 .PHONY: package-runnable-code
-package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
+package-runnable-code:
+	$(ROLLBACK) $(PACKAGE_RUNNABLE_CODE_DIR)
+	@$(MAKE) $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 
 .PHONY: package-runnable-code-eval
-package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
+package-runnable-code-eval:
+	$(ROLLBACK) $(PACKAGE_RUNNABLE_CODE_DIR)
+	@$(MAKE) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 
 .PHONY: package-evals-static
 package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
@@ -462,7 +466,9 @@ package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
 package-corpus: $(CORPUS) $(CORPUS_DETAILS)
 
 .PHONY: package-run
-package-run: $(PACKAGE_RUN_STATS)
+package-run:
+	$(ROLLBACK) $(PACKAGE_RUN_DIR)
+	@$(MAKE) $(PACKAGE_RUN_STATS)
 
 .PHONY: package-trace-eval
 package-trace-eval:
@@ -485,7 +491,9 @@ package-preprocess:
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
 
 .PHONY: kaggle-run
-kaggle-run: $(KAGGLE_RUN_STATS)
+kaggle-run:
+	$(ROLLBACK) $(KAGGLE_RUN_DIR)
+	@$(MAKE) $(KAGGLE_RUN_STATS)
 
 .PHONY: kaggle-trace-eval
 kaggle-trace-eval:
@@ -506,7 +514,9 @@ kaggle-preprocess:
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
 
 .PHONY: base-run
-base-run: $(BASE_RUN_STATS)
+base-run:
+	$(ROLLBACK) $(BASE_RUN_DIR)
+	@$(MAKE) $(BASE_RUN_STATS)
 
 .PHONY: base-trace-eval
 base-trace-eval:
