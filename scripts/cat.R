@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 library(optparse)
+library(stringr)
 
 read_file <- function(file) {
   switch(
@@ -13,10 +14,15 @@ read_file <- function(file) {
 
 run <- function(columns, delim, header, file) {
   df <- read_file(file)
+  cols <- colnames(df)
   if (length(columns) > 0) {
-    df <- subset(df, select=columns)
+    cols <- cols[cols %in% columns]
   }
-  cat(readr::format_delim(df, delim, col_names=header))
+  if (header) {
+    cat(str_c(cols, collapse=delim), "\n")
+  }
+  str <- str_c("{", cols, "}", collapse=delim)
+  cat(str_glue(str, .envir=df), sep="\n")
 }
 
 option_list <- list(
