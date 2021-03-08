@@ -56,7 +56,7 @@ process_revdeps <- function(raw) {
 }
 
 process_runnable_code <- function(raw) {
-  raw %>%
+  df <- raw %>%
     filter(language=="R") %>%
     group_by(package, type) %>%
     summarise(files=n(), code=sum(code)) %>%
@@ -65,7 +65,17 @@ process_runnable_code <- function(raw) {
       values_from=c(code, files),
       values_fill=list(code=0, files=0),
       names_glue="runnable_{.value}_{type}"
-    ) %>%
+    )
+
+  for (col in c("examples", "tests", "vignettes")) {
+    crc <- str_c("runnable_code_", col)
+
+    if (!(crc %in% colnames(df))) {
+      df <- mutate(df, "runnable_code_{col}" := 0, "runnable_files_{col}" := 0)
+    }
+  }
+
+  df %>%
     mutate(
       runnable_code=runnable_code_examples + runnable_code_tests + runnable_code_vignettes,
       runnable_files=runnable_files_examples + runnable_files_tests + runnable_files_vignettes
