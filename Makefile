@@ -45,6 +45,7 @@ R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
 RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
 MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
+CAT       := $(SCRIPTS_DIR)/cat.R
 
 # A template that is used to wrap the extracted runnable code from packages.
 TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
@@ -137,6 +138,7 @@ KAGGLE_KERNELS_CSV							:= $(KAGGLE_KERNELS_DIR)/kernel.csv
 KAGGLE_KERNELS_EVALS_STATIC_CSV := $(KAGGLE_KERNELS_DIR)/kaggle-evals-static.csv
 KAGGLE_KERNELS_STATS						:= $(KAGGLE_KERNELS_DIR)/parallel.csv
 KAGGLE_SCRIPTS_TO_RUN_TXT       := $(RUN_DIR)/kaggle-scripts-to-run.txt
+KAGGLE_CORPUS_FILE              := $(KAGGLE_KERNELS_DIR)/corpus.txt
 
 KAGGLE_RUN_DIR   := $(RUN_DIR)/kaggle-run
 KAGGLE_RUN_STATS := $(KAGGLE_RUN_DIR)/parallel.csv
@@ -231,13 +233,12 @@ $(CORPUS) $(CORPUS_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_RUNNABLE_CODE_E
 ########################################################################
 $(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN)
-	-$(RSCRIPT) -e \
-    'glue::glue("{package}/{file}", .envir=read.csv("$<"))' > $@
+	$(CAT) -c package,file -d '/' --no-header $< > $@
 
 .PRECIOUS: $(PACKAGE_RUN_STATS)
 $(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(call LOG,PACKAGE RUN)
-	$(MAP) -f $< -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
+	-$(MAP) -f $(PACKAGE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
 
 $(PACKAGE_EVALS_TO_TRACE): $(CORPUS) $(PACKAGE_EVALS_STATIC_CSV)
@@ -319,7 +320,7 @@ $(KAGGLE_KORPUS_METADATA_CSV): $(KAGGLE_KORPUS_DIR)
 ## 2. Link the downloaded datasets into kaggle-kernel so the ../input works
 $(KAGGLE_KERNELS_STATS): $(KAGGLE_KORPUS_METADATA_CSV)
 	$(call LOG,EXTRACTING KERNELS: $(@F))
-	-$(SCRIPTS_DIR)/cat.R -c competition,id $< | \
+	-$(CAT) -c competition,id $< | \
      $(MAP) -f - -o $(@D) -w $(@D)/{1}/{2} -e $(SCRIPTS_DIR)/kaggle.sh \
      -C ',' --skip-first-line \
      -- $(KAGGLE_KORPUS_DIR)/{2}/script/kernel-metadata.json \
@@ -340,6 +341,9 @@ $(KAGGLE_KERNELS_EVALS_STATIC_CSV): $(KAGGLE_KERNELS_STATS)
 $(KAGGLE_SCRIPTS_TO_RUN_TXT): $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN: $(@F))
 	$(SCRIPTS_DIR)/kaggle-scripts-to-run.R --metadata $(KAGGLE_KERNELS_CSV) --evals-static $(KAGGLE_KERNELS_EVALS_STATIC_CSV) > $@
+
+$(KAGGLE_CORPUS_FILE): $(KAGGLE_SCRIPTS_TO_RUN_TXT)
+	parallel -a $< -j 1 basename > $@
 
 .PRECIOUS: $(KAGGLE_RUN_STATS)
 $(KAGGLE_RUN_STATS): $(KAGGLE_SCRIPTS_TO_RUN_TXT) $(KAGGLE_DATASET_DIR)
@@ -427,11 +431,11 @@ $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
     --out-summarized-externals $(BASE_SUM_EXTERNALS_FILE) \
     --out-undefined $(BASE_SUM_UNDEFINED_FILE)
 
-$(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS)
+$(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(KAGGLE_CORPUS_FILE)
 	-mkdir -p $(@D)
 	$(RSCRIPT) $(SCRIPTS_DIR)/preprocess.R \
     $(PREPROCESS_TYPE) \
-    --corpus $(KAGGLE_PREPROCESS_DIR)/corpus.txt \
+    --corpus $(KAGGLE_CORPUS_FILE) \
     --calls $(KAGGLE_TRACE_EVAL_CALLS) \
     --reflection $(KAGGLE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(KAGGLE_SUM_FILE) \
@@ -446,10 +450,14 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS)
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
 
 .PHONY: package-runnable-code
-package-runnable-code: $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
+package-runnable-code:
+	$(ROLLBACK) $(PACKAGE_RUNNABLE_CODE_DIR)
+	@$(MAKE) $(PACKAGE_RUNNABLE_CODE_CSV) $(PACKAGE_RUNNABLE_CODE_STATS)
 
 .PHONY: package-runnable-code-eval
-package-runnable-code-eval: $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
+package-runnable-code-eval:
+	$(ROLLBACK) $(PACKAGE_RUNNABLE_CODE_DIR)
+	@$(MAKE) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 
 .PHONY: package-evals-static
 package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
@@ -458,7 +466,9 @@ package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
 package-corpus: $(CORPUS) $(CORPUS_DETAILS)
 
 .PHONY: package-run
-package-run: $(PACKAGE_RUN_STATS)
+package-run:
+	$(ROLLBACK) $(PACKAGE_RUN_DIR)
+	@$(MAKE) $(PACKAGE_RUN_STATS)
 
 .PHONY: package-trace-eval
 package-trace-eval:
@@ -481,7 +491,9 @@ package-preprocess:
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
 
 .PHONY: kaggle-run
-kaggle-run: $(KAGGLE_RUN_STATS)
+kaggle-run:
+	$(ROLLBACK) $(KAGGLE_RUN_DIR)
+	@$(MAKE) $(KAGGLE_RUN_STATS)
 
 .PHONY: kaggle-trace-eval
 kaggle-trace-eval:
@@ -494,13 +506,17 @@ kaggle-preprocess:
 	parallel -a $(KAGGLE_SCRIPTS_TO_RUN_TXT) -j 1 basename > $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
 	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
-	cp -f $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_PREPROCESS_DIR)/evals-static.csv
+	@$(MAKE) $(KAGGLE_CORPUS_FILE)
+	cp -f $(KAGGLE_CORPUS_FILE) $(KAGGLE_PREPROCESS_DIR)/corpus.txt
+	$(RSCRIPT) -e 'x <- read.csv("$(KAGGLE_KERNELS_EVALS_STATIC_CSV)"); x[, "srcref"] <- paste0(x[, "package"],  x[, "srcref"]); write.csv(x, "$(KAGGLE_PREPROCESS_DIR)/evals-static.csv", row.names=F)'
 
 .PHONY: base-evals-static
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
 
 .PHONY: base-run
-base-run: $(BASE_RUN_STATS)
+base-run:
+	$(ROLLBACK) $(BASE_RUN_DIR)
+	@$(MAKE) $(BASE_RUN_STATS)
 
 .PHONY: base-trace-eval
 base-trace-eval:
