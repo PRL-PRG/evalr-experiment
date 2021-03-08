@@ -503,7 +503,6 @@ kaggle-trace-eval:
 .PHONY: kaggle-preprocess
 kaggle-preprocess:
 	$(ROLLBACK) $(KAGGLE_PREPROCESS_DIR)
-	parallel -a $(KAGGLE_SCRIPTS_TO_RUN_TXT) -j 1 basename > $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
 	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
 	@$(MAKE) $(KAGGLE_CORPUS_FILE)
