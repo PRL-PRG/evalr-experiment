@@ -399,7 +399,7 @@ read_merged_file <- function(filepath) {
 }
 
 preprocess_calls <- function(arguments) {
-  corpus_file <- arguments$corpus
+  corpus_file <- arguments$corpus_file
   calls_file <- arguments$calls_file
   evals_undefined_file <- arguments$evals_undefined_file
   evals_summarized_file <- arguments$evals_summarized_file
