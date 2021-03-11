@@ -7,8 +7,11 @@
 # - cut the dataset into smaller ones
 
 
-suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(rlang))
+library(purrr)
+library(tidyr)
+library(dplyr)
+library(stringr)
 library(fs)
 library(readr)
 library(fst)
@@ -324,7 +327,7 @@ add_fake_srcref <- function(df) {
   df_na <-
     df %>%
     filter(is.na(eval_call_srcref)) %>%
-    mutate(eval_call_srcref = str_c(eval_source, str_replace_na(caller_function), eval_call_expression, sep = "::"))
+    mutate(eval_call_srcref = str_c(eval_source, str_replace_na(caller_function), if_else(caller_function %in% eval_base_functions, "", eval_call_expression), sep = "::"))
 
   df %>%
     filter(!is.na(eval_call_srcref)) %>%
@@ -342,46 +345,10 @@ get_externals <- function(dataset, corpus_files) {
 }
 
 undefined_packages <- function(eval_calls) {
-  undefined_per_package <-
     eval_calls %>%
     filter(eval_source == "base?")
-  #
-  #   %>%
-  #   group_by(package) %>%
-  #   summarize(n = n_distinct(eval_call_expression))
-  #
-  # known_packages <-
-  #   setdiff(eval_calls$package, undefined_per_package$package) %>%
-  #   as_tibble_col(column_name = "package") %>%
-  #   mutate(n = 0)
-  #
-  # undefined_per_package <-
-  #   bind_rows(undefined_per_package, known_packages) %>%
-  #   arrange(desc(n))
-
-  undefined_per_package
 }
 
-
-# This is performed directly in usage_metrics.Rmd
-known_call_sites <- function(eval_calls_corpus, corpus_files) {
-  call_sites_per_package <- eval_calls_corpus %>%
-    filter(eval_source != "base?", eval_source %in% corpus_files$package) %>%
-    group_by(eval_source) %>%
-    summarize(n = n_distinct(eval_call_srcref))
-
-  known_packages <-
-    setdiff(corpus_files, call_sites_per_package$eval_source) %>% as_tibble_col(column_name = "eval_source")
-
-  known_packages <- known_packages %>% mutate(n = 0)
-
-  call_sites_per_package <-
-    bind_rows(call_sites_per_package, known_packages) %>%
-    rename(package = eval_source) %>%
-    arrange(desc(n))
-
-  return(call_sites_per_package)
-}
 
 ### Command line and preprocessing pipeline
 
@@ -455,9 +422,6 @@ preprocess_calls <- function(arguments) {
     cat("Only keep eval in corpus\n")
     now <- Sys.time()
     corpus <- readLines(corpus_file)
-    # This is probably useless as there already was a filtering at tracing time.
-    # But this is a sanity check...
-    # Keep if quick
     corpus_files <- enframe(corpus, name = NULL, value = "package")
     eval_calls_corpus <- eval_calls %>% keep_only_corpus(corpus_files)
     eval_calls_externals <- eval_calls %>% get_externals(corpus_files)
