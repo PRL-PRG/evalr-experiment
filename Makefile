@@ -504,6 +504,8 @@ package-preprocess:
 	cp -f $(CORPUS) $(PACKAGE_PREPROCESS_DIR)/corpus.txt
 	cp -f $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_PREPROCESS_DIR)/evals-static.csv
 
+package-all: package-trace-eval package-run package-coverage
+
 .PHONY: kaggle-kernels
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
 
