@@ -76,6 +76,11 @@ PACKAGE_METADATA_FILES := \
   $(PACKAGE_REVDEPS_CSV) \
   $(PACKAGE_SLOC_CSV)
 
+# coverage
+PACKAGE_COVERAGE_DIR   := $(RUN_DIR)/package-coverage
+PACKAGE_COVERAGE_STATS := $(PACKAGE_COVERAGE_DIR)/parallel.csv
+PACKAGE_COVERAGE_CSV   := $(PACKAGE_COVERAGE_DIR)/coverage.csv
+
 # static eval
 PACKAGE_EVALS_STATIC_DIR		:= $(RUN_DIR)/package-evals-static
 PACKAGE_EVALS_STATIC_STATS	:= $(PACKAGE_EVALS_STATIC_DIR)/parallel.csv
@@ -188,6 +193,15 @@ $(PACKAGE_SLOC_CSV): $(PACKAGE_METADATA_STATS)
 $(PACKAGE_REVDEPS_CSV): $(PACKAGE_METADATA_STATS)
 	$(call LOG,MERGING $(@F))
 	$(MERGE) --in $(@D) --csv-cols "c" --key package --key-use-dirname $(@F)
+
+$(PACKAGE_COVERAGE_STATS): $(PACKAGES)
+	$(call LOG,PACKAGE COVERAGE)
+	-$(MAP) -t $(TIMEOUT) --override -f $< -o $(@D) -e $(RUNR_TASKS_DIR)/package-coverage.R \
+    -- --type all $(CRAN_DIR)/extracted/{1}
+
+$(PACKAGE_COVERAGE_CSV): $(PACKAGE_COVERAGE_STATS)
+	$(call LOG,MERGING $(@F))
+	$(MERGE) --in $(@D) --csv-cols "ccdd" --key package --key-use-dirname $(@F)
 
 $(PACKAGE_EVALS_STATIC_STATS): $(PACKAGES)
 	$(call LOG,PACKAGE STATIC EVALS)
@@ -448,6 +462,9 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(K
 
 .PHONY: package-metadata
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
+
+.PHONY: package-coverage
+package-coverage: $(PACKAGE_COVERAGE_CSV)
 
 .PHONY: package-runnable-code
 package-runnable-code:
