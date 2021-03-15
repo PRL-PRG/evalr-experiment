@@ -249,8 +249,11 @@ $(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN)
 	$(CAT) -c package,file -d '/' --no-header $< > $@
 
+# need to explicitly state the dependency on PACKAGE_RUNNABLE_CODE_STATS because
+# the PACKAGE_SCRIPTS_TO_RUN_TXT is generated from the eval data
+# TODO: generate separate file for the running
 .PRECIOUS: $(PACKAGE_RUN_STATS)
-$(PACKAGE_RUN_STATS): $(PACKAGE_SCRIPTS_TO_RUN_TXT)
+$(PACKAGE_RUN_STATS): $(PACKAGE_RUNNABLE_CODE_STATS) $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(call LOG,PACKAGE RUN)
 	-$(MAP) -f $(PACKAGE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     -- -t $(TIMEOUT) $(PACKAGE_RUNNABLE_CODE_DIR)/{1}
