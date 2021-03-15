@@ -106,7 +106,10 @@ packages-*.txt
 /corpus-stage2-revdeps.txt
 /corpus-stage2.txt
 /corpus-all.fst
-/CRAN/
+/CRAN
 .DS_Store
 scripts/.DS_Store
 *.R~
+/library
+/packages.txt
+/run-*
