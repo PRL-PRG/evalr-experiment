@@ -624,6 +624,7 @@ shell:
 	docker run \
     --rm \
     --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l | tr -d '[:space:]')" \
+    --privileged \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -v $$(readlink -f $(CURDIR)/CRAN):$(CURDIR)/CRAN \
