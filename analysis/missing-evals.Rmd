@@ -1,0 +1,160 @@
+---
+title: "Missing evals"
+output: 
+  html_document:
+editor_options: 
+  chunk_output_type: console
+params:
+  base_dir: /mnt/nvme0/R/project-evalR/evalr-krikava
+  run_dir: run-1207
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(dplyr)
+library(fst)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(tidyr)
+
+source("inc/latextags.R")
+source("inc/functions.R")
+
+RUN_DIR       <- file.path(params$base_dir, params$run_dir)
+
+PKG_TRACE_DIR <- file.path(RUN_DIR, "package-trace-eval")
+PKG_RUN_DIR   <- file.path(RUN_DIR, "package-run")
+PKG_SE_DIR    <- file.path(RUN_DIR, "package-evals-static")
+PKG_COVR_DIR  <- file.path(RUN_DIR, "package-coverage")
+```
+
+```{r load static evals}
+SE <- read_csv(
+  file.path(PKG_SE_DIR, "package-evals-static.csv"),
+  col_types=cols(
+    package=col_character(),
+    fun_name=col_character(),
+    srcref=col_character(),
+    call_fun_name=col_character(),
+    args=col_character()
+  )
+)
+```
+
+```{r load coverage}
+COVR <- read_csv(
+  file.path(PKG_COVR_DIR, "coverage.csv"),
+  col_types = cols(
+    package = col_character(),
+    type = col_character(),
+    error = col_logical(),
+    coverage_line = col_double(),
+    coverage_expression = col_double()
+  )
+) %>% 
+  select(package, coverage=coverage_expression)
+```
+
+```{r sanity check - no coverage error}
+stopifnot(all(is.numeric(COVR$coverage)))
+```
+
+```{r load calls.fst}
+E <- read_fst(file.path(PKG_TRACE_DIR, "calls.fst")) %>% 
+  as_tibble() %>%
+  rename(srcref=eval_call_srcref)
+```
+
+```{r traced eval call sites}
+E_call_sites <- cs_count(E, srcref)
+```
+
+```{r missed static evals}
+SE_missed <- anti_join(SE, E_call_sites, by="srcref")
+```
+
+```{r load parallel info}
+PR <- read_trace_log(PKG_RUN_DIR)
+PT <- read_trace_log(PKG_TRACE_DIR)
+```
+
+## Run
+
+```{r}
+PR_s <- filter(PR, exitval==0)
+PT_s <- filter(PT, exitval==0)
+
+overview(
+  r("Run dir", PKG_RUN_DIR),
+  r("Trace dir", PKG_TRACE_DIR),
+  r("Run programs", PR),
+  r("Traced programs", PT),
+  r("Run successfully", PR_s),
+  r("Run successfully ratio", ratio(PR_s, PR)),
+  r("Traced successfully", PT_s),
+  r("Traced successfully ratio", ratio(PT_s, PT)),
+  r("Tracing failure", invratio(PT_s, PT))
+) %>% knitr::kable()
+```
+
+## Runtime
+
+```{r}
+PR_time <- max(PR$endtime)-min(PR$starttime)
+PT_time <- max(PT$endtime)-min(PT$starttime)
+
+overview(
+  r("Running time", PR_time),
+  r("Average running time", mean(PR$runtime)),
+  r("Tracing time", PT_time),
+  r("Average tracing time", mean(PT$runtime)),
+  r("Observed slowdown", as.numeric(PT_time, "secs") / as.numeric(PR_time, "secs")),
+  r("Absolute slowdown (sun of runtimes)", sum(as.numeric(PT$runtime, "secs")) / sum(as.numeric(PR$runtime, "secs"))),
+  r("Average slowdown (mean of per job difference)", mean(as.numeric(PT$runtime, "secs") / as.numeric(PR$runtime, "secs")))
+) %>% knitr::kable()
+```
+
+## Evals
+
+```{r overview, results='asis'}
+overview(
+  r("Number of packages", length(unique(SE$package))),
+  r("Number of traced eval calls", E),
+  r("Number of traced eval call sites", E_call_sites),
+  r("Number of NA eval calls", filter(E, is.na(srcref))),
+  r("Percent of NA eval calls", ratio(filter(E, is.na(srcref)), E)),
+  r("Number of static eval call sites", SE),
+  r("Missed eval call sites", SE_missed), 
+  r("Percent of missed eval call sites", ratio(SE_missed, SE))
+) %>% knitr::kable()
+```
+
+## Evals per package
+
+```{r per package}
+res <- COVR %>% 
+  left_join(count(SE, package) %>% rename(static_call_sites=n), by="package") %>% 
+  left_join(count(SE_missed, package) %>% rename(missed_call_sites=n), by="package") %>%
+  # it is possible that there are no static call sites nor any missed ones
+  mutate(
+    static_call_sites=replace_na(static_call_sites, 0),
+    missed_call_sites=replace_na(missed_call_sites, 0),
+    missed_ratio=missed_call_sites/static_call_sites*100
+  ) %>% 
+  arrange(package)
+```
+
+```{r echo=TRUE}
+res %>% 
+  filter(missed_ratio==100, coverage >= 50) %>% 
+  mutate(label=ifelse(static_call_sites >= 5, package, NA)) %>% 
+  ggplot(aes(x=coverage, y=static_call_sites, label=label)) + geom_point() + geom_label(nudge_y = 1)
+```
+
+
+```{r results='asis'}
+knitr::kable(res)
+```
+

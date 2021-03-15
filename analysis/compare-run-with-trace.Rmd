@@ -1,0 +1,85 @@
+---
+title: "Compare run with trace"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+params:
+  http_base_url: http://prl2:8001/file_show?path=
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(DT)
+library(tidyverse)
+library(fs)
+
+source("inc/latextags.R")
+source("inc/functions.R")
+
+BASE_DIR <- "/mnt/nvme0/R/project-evalR/evalr-krikava"
+RUN_DIR <- path(BASE_DIR, "run-1207")
+PKG_TRACE_DIR <- path(RUN_DIR, "package-trace-eval")
+PKG_RUN_DIR <- path(RUN_DIR, "package-run")
+```
+
+```{r}
+L_trace <- read_trace_log(PKG_TRACE_DIR, drop_hostname=TRUE, read_errors=TRUE) 
+L_run <- read_trace_log(PKG_RUN_DIR, drop_hostname=TRUE)
+```
+
+```{r}
+L <- left_join(
+  L_trace,
+  select(L_run, program, exitval, runtime),
+  by="program",
+  suffix=c("_trace", "_run")
+) %>% as_tibble()
+```
+
+```{r echo=TRUE}
+P_trace_fail <- filter(L, exitval_trace != 0, exitval_run == 0)
+```
+
+# Overview
+
+```{r}
+overview_table(
+  r("Number of programs", L),
+  r("Failed run", filter(L, exitval_run != 0)),
+  r("Failed trace", filter(L, exitval_trace != 0)),
+  r("Good run, failed trace", P_trace_fail)
+)
+```
+
+# Exit code distribution
+
+```{r}
+cs_count(P_trace_fail, exitval_trace) %>% datatable()
+```
+
+# Failed tracing
+
+```{r}
+P_trace_fail %>%
+  filter(!is.na(error)) %>% 
+  cs_count(error) %>% 
+  datatable()
+```
+
+```{r}
+P_trace_fail %>%
+  filter(!is.na(call)) %>% 
+  cs_count(call) %>% 
+  datatable()
+```
+
+# Log files
+
+```{r}
+P_trace_fail %>%
+  mutate(task_output_url=show_url(task_output)) %>% 
+  select(exitval_trace, program, error, source, call, task_output_url) %>%
+  datatable(escape=FALSE, filter = list(position = 'top', clear = FALSE))
+```
+
