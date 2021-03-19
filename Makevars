@@ -17,6 +17,6 @@ SSH := ssh -o ControlPath=$(SSH_CONTROL_FILE_PREFIX)%r@%h:%p -F none -o LogLevel
 SSH_NUM_SLOTS := 64
 
 # all hosts
-HOSTS := prl2 prl4
+HOSTS := prl2 prl3 prl4
 # slaves (excluding the one from which we run this make file)
-SLAVES := $(filter-out $(HOSTNAME),$(HOSTS))
+SLAVES = $(filter-out $(HOSTNAME),$(HOSTS))
