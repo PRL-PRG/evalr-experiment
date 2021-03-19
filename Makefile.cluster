@@ -35,7 +35,7 @@ image:
       -h $(WORKER_NAME) \
       -p $(SSH_HOST_PORT):22 \
       -v "$(CRAN_DIR):$(CRAN_DIR):ro" \
-      -v "$(LIBRARY_DIR):$(LIBRARY_DIR):ro" \
+      -v "$(LIBRARY_DIR):$(LIBRARY_DIR)" \
       -v "$(CURDIR):$(CURDIR)" \
       -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
       -e SSH_AUTH_SOCK=/ssh-agent \
@@ -54,7 +54,7 @@ image:
 	@TERM=xterm make envir
 
 .node-update:
-	make -C $(CURDIR) update-all
+	make -C $(CURDIR) libs
 
 NODES_ALL := $(patsubst %, node/%, $(HOSTS))
 HOSTS_ALL := $(patsubst %, host/%, $(HOSTS))
@@ -102,7 +102,7 @@ node-status: nodes-all
 
 .PHONY: node-update
 node-update: TARGET=$(THIS_MAKE) .node-update
-node-update: hosts-slaves
+node-update: nodes-all
 
 $(SSH_LOGIN_FILE):
 	-@rm -f $(SSH_LOGIN_FILE)
