@@ -37,6 +37,8 @@ image:
       -v "$(CRAN_DIR):$(CRAN_DIR):ro" \
       -v "$(LIBRARY_DIR):$(LIBRARY_DIR):ro" \
       -v "$(CURDIR):$(CURDIR)" \
+      -v $(readlink -f $SSH_AUTH_SOCK):/ssh-agent \
+      -e SSH_AUTH_SOCK=/ssh-agent \
       -e R_LIBS="$(CURDIR)/library:$(LIBRARY_DIR)" \
       -e NO_EXEC_SUDO=1 \
       -e USER_ID=$$(id -u) \
@@ -51,6 +53,8 @@ image:
   echo "$(HOSTNAME): load: $$load, tasks: $$tasks"
 	@TERM=xterm make envir
 
+.node-update:
+	make -C $(CURDIR) update-all
 
 NODES_ALL := $(patsubst %, node/%, $(HOSTS))
 HOSTS_ALL := $(patsubst %, host/%, $(HOSTS))
@@ -95,6 +99,10 @@ node-setup: hosts-all
 .PHONY: node-status
 node-status: TARGET=$(THIS_MAKE) .node-status
 node-status: nodes-all
+
+.PHONY: node-update
+node-update: TARGET=$(THIS_MAKE) .node-update
+node-update: hosts-slaves
 
 $(SSH_LOGIN_FILE):
 	-@rm -f $(SSH_LOGIN_FILE)
