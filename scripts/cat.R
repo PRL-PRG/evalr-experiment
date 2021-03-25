@@ -14,14 +14,28 @@ read_file <- function(file) {
 
 run <- function(columns, delim, header, file) {
   df <- read_file(file)
-  cols <- colnames(df)
+  df_cols <- colnames(df)
+
   if (length(columns) > 0) {
-    cols <- cols[cols %in% columns]
+    missing_cols <- columns[!(columns %in% df_cols)]
+    if (length(missing_cols) > 0) {
+      stop(
+        "Columns: ",
+        str_c(missing_cols, collapse=", "),
+        " are not part of the input (",
+        str_c(df_cols, collapse=", "),
+        ")"
+      )
+    }
+    df_cols <- columns
   }
+
   if (header) {
-    cat(str_c(cols, collapse=delim), "\n")
+    cat(str_c(df_cols, collapse=delim), "\n")
   }
-  str <- str_c("{", cols, "}", collapse=delim)
+
+  str <- str_c("{", df_cols, "}", collapse=delim)
+
   cat(str_glue(str, .envir=df), sep="\n")
 }
 
