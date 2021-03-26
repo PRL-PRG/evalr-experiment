@@ -142,15 +142,19 @@ run <- function(metadata_file,
     )
   )
 
-  revdeps <- process_revdeps(
-    read_csv(
-      revdeps_file,
-      col_types=cols(
-        package = col_character(),
-        revdep = col_character()
+  revdeps <- if (file.exists(revdeps_file)) {
+    process_revdeps(
+      read_csv(
+        revdeps_file,
+        col_types=cols(
+          package = col_character(),
+          revdep = col_character()
+        )
       )
     )
-  )
+  } else {
+    tibble(package=character(0), revdeps=integer(0))
+  }
 
   runnable_code <- process_runnable_code(
     read_csv(
