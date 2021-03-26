@@ -291,8 +291,7 @@ $(BASE_EVALS_STATIC_CSV): $(BASE_EVALS_STATIC_STATS)
 
 $(BASE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN: $(@F))
-	-$(RSCRIPT) -e \
-    'head(glue::glue("{package}/{file}", .envir=read.csv("$<")),$(BASE_SCRIPTS_TO_RUN_SIZE))' > $@
+	$(CAT) --limit $(BASE_SCRIPTS_TO_RUN_SIZE) --shuffle --no-header --columns package,file --delim '/' $< > $@
 
 .PRECIOUS: $(BASE_RUN_STATS)
 $(BASE_RUN_STATS): $(BASE_SCRIPTS_TO_RUN_TXT)
