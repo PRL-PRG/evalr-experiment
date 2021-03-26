@@ -37,7 +37,7 @@ JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null |
 # TODO: do not rely on GNU parallel timeout, use timeout binary
 TIMEOUT       ?= 35m
 # TODO: change so it is the number of scripts rather than number of packages
-BASE_SCRIPTS_TO_RUN_SIZE := 10000
+BASE_SCRIPTS_TO_RUN_SIZE := 25000
 
 # tools
 MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
