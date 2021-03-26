@@ -8,11 +8,12 @@ read_file <- function(file) {
     tools::file_ext(file),
     csv=readr::read_csv(file, col_types=readr::cols()),
     fst=fst::read_fst(file),
+    txt=data.frame(value=readLines(file)),
     stop("unsupported file format: ", file)
   )
 }
 
-run <- function(columns, delim, header, file) {
+run <- function(columns, delim, header, file, limit, shuffle) {
   df <- read_file(file)
   df_cols <- colnames(df)
 
@@ -28,6 +29,19 @@ run <- function(columns, delim, header, file) {
       )
     }
     df_cols <- columns
+  }
+
+  max_rows <- nrow(df)
+  rows <- seq(max_rows)
+
+  if (shuffle) {
+    rows <- sample(rows)
+  }
+
+  if (limit > 0) {
+    max_rows <- min(max_rows, limit)
+    rows <- head(rows, max_rows)
+    df <- df[rows, , drop=FALSE]
   }
 
   if (header) {
@@ -54,15 +68,26 @@ option_list <- list(
     c("--no-header"),
     help="Omit the header", action="store_false", default=TRUE,
     dest="header"
+  ),
+  make_option(
+    c("--limit"), default=0,
+    help="Limit the number of rows printed",
+    dest="limit", metavar="INT"
+  ),
+  make_option(
+    c("--shuffle"),
+    action="store_true", default=FALSE,
+    help="Shuffle the output rows",
+    dest="shuffle"
   )
 )
 
 opt_parser <- OptionParser(option_list=option_list)
 opts <- parse_args(opt_parser, positional_arguments=1)
 
-run(
-  columns=trimws(strsplit(opts$options$columns, ",")[[1]], which="both"),
-  delim=opts$options$delim,
-  header=opts$options$header,
-  file=opts$args
-)
+options <- opts$options
+options$help <- NULL
+options$file <- opts$args
+options$columns <- trimws(strsplit(opts$options$columns, ",")[[1]], which="both")
+
+do.call(run, options)
