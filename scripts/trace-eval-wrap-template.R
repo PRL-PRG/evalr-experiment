@@ -1,16 +1,14 @@
 suppressPackageStartupMessages(library(evil))
 
+cat("*** EVALS_IMPUTE_SRCREF_FILE: '", Sys.getenv("EVALS_IMPUTE_SRCREF_FILE"), "'\n", sep="")
 cat("*** EVALS_TO_TRACE: '", Sys.getenv("EVALS_TO_TRACE"), "'\n", sep="")
 
+if (!is.na(Sys.getenv("EVALS_IMPUTE_SRCREF_FILE", NA))) {
+  evil::setup_eval_wrapping_hook_from_file(Sys.getenv("EVALS_IMPUTE_SRCREF_FILE"))
+}
+
 traces <- evil::trace_code(
-  evals_to_trace={
-    tmp <- Sys.getenv("EVALS_TO_TRACE", NA)
-    if (!is.na(tmp)) {
-      if (file.exists(tmp)) readLines(tmp) else tmp
-    } else {
-      NULL
-    }
-  },
+  evals_to_trace=Sys.getenv("EVALS_TO_TRACE", ""),
   code={
     .BODY.
   }
