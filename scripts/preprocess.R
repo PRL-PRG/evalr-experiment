@@ -373,6 +373,7 @@ preprocess_calls <- function(arguments) {
   evals_summarized_externals_file <- arguments$evals_summarized_externals_file
   trim_expressions <- arguments$trim_expressions
   out_name <- arguments$out_name
+  is_kaggle <- arguments$kaggle
 
   now_first <- Sys.time()
 
@@ -405,6 +406,13 @@ preprocess_calls <- function(arguments) {
   cat("Correcting srcrefs\n")
   now <- Sys.time()
   eval_calls <- eval_calls %>% add_fake_srcref()
+  if(is_kaggle) {
+    cat("Fixing kaggle srcref\n")
+    stopifnot(str_starts(eval_calls$eval_call_srcref, fixed("::global")))
+
+    eval_calls <- eval_calls %>%
+      mutate(eval_call_srcref = str_replace(eval_call_srcref, fixed("::global::"), paste0("::", eval_source, "::")))
+  }
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
@@ -526,6 +534,10 @@ parse_program_arguments <- function() {
     make_option(
       c("--trim"),
       action = "store_true", dest = "trim_expressions", default = TRUE,
+    ),
+    make_option(
+      c("--kaggle"),
+      action = "store_true", dest = "kaggle", default = FALSE,
     ),
     make_option(
       c("--out"),
