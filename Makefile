@@ -2,6 +2,8 @@
 MAKEFLAGS += --no-builtin-rules
 .SUFFIXES:
 
+# TODO: add support for blacklisting packages (e.g. H2O)
+
 include Makevars
 
 # This file contains a list of all packages we want to include.
