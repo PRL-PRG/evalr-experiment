@@ -460,7 +460,8 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(K
     --reflection $(KAGGLE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(KAGGLE_SUM_FILE) \
     --out-summarized-externals $(KAGGLE_SUM_EXTERNALS_FILE) \
-    --out-undefined $(KAGGLE_SUM_UNDEFINED_FILE)
+    --out-undefined $(KAGGLE_SUM_UNDEFINED_FILE) \
+    --kaggle
 
 ########################################################################
 # TASKS
