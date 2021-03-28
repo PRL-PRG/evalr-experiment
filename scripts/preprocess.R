@@ -413,6 +413,11 @@ preprocess_calls <- function(arguments) {
     eval_calls <- eval_calls %>%
       mutate(eval_call_srcref = str_replace(eval_call_srcref, fixed("::global::"), paste0("::", eval_source, "::")))
   }
+  else {
+    cat("Removing eval directly in the source of an example, a vignette...\n")
+    eval_calls <- eval_calls %>%
+      filter(!str_starts(eval_call_srcref, fixed("::global::")))
+  }
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
