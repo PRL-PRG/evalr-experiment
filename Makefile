@@ -511,6 +511,7 @@ package-preprocess:
 	@$(MAKE) $(PACKAGE_PREPROCESS_FILES)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
 	cp -f $(CORPUS) $(PACKAGE_PREPROCESS_DIR)/corpus.txt
+	cp -f $(CORPUS_DETAILS) $(PACKAGE_PREPROCESS_DIR)/corpus.fst
 	cp -f $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_PREPROCESS_DIR)/evals-static.csv
 
 package-all: package-trace-eval package-run package-coverage
