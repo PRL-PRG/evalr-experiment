@@ -62,10 +62,9 @@ read_trace_log <- function(path, read_errors=FALSE, ...) {
   df
 }
 
-cs_count <- function(df, var) {
+cs_count <- function(df, ...) {
   n_rows = nrow(df)
-  var = enquo(var)
-  count(df, !!var, sort=TRUE) %>%
+  count(df, ..., sort=TRUE) %>%
     mutate(p=n/n_rows*100, cp=cumsum(p))
 }
 
