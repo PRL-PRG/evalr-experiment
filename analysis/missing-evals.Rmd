@@ -1,12 +1,15 @@
 ---
 title: "Missing evals"
-output: 
+output:
   html_document:
-editor_options: 
+    df_print: paged
+  github_document:
+    html_preview: FALSE
+editor_options:
   chunk_output_type: console
 params:
-  base_dir: /mnt/nvme0/R/project-evalR/evalr-krikava
-  run_dir: run-1207
+  base_dir: /mnt/ocfs_vol_00/project-evalr/evalr-experiment
+  run_dir: run
 ---
 
 ```{r setup, include=FALSE}
@@ -131,6 +134,40 @@ overview(
 ) %>% knitr::kable()
 ```
 
+## Coverage CRAN
+
+```{r}
+COVR_failed <- filter(COVR, is.na(coverage))
+coverage <- COVR$coverage
+overview(
+  r("Packages with coverage", COVR),
+  r("Packages without coverage", COVR_failed),
+  r("Failed coverage ratio", ratio(COVR_failed, COVR)),
+  r("Average coverage", percent(mean(coverage, na.rm = TRUE))/100),
+  r("Median coverage", percent(median(coverage, na.rm = TRUE))/100),
+  r("Stdev coverage", sd(coverage, na.rm = TRUE)),
+)
+rm(coverage)
+```
+
+## Coverage packages with evals
+
+```{r}
+COVR_eval <- semi_join(COVR, SE, by="package")
+COVR_eval_failed <- filter(COVR_eval, is.na(coverage))
+coverage <- COVR_eval$coverage
+overview(
+  r("Packages with coverage", COVR_eval),
+  r("Packages without coverage", COVR_eval_failed),
+  r("Failed coverage ratio", ratio(COVR_eval_failed, COVR_eval)),
+  r("Average coverage", percent(mean(coverage, na.rm = TRUE))/100),
+  r("Median coverage", percent(median(coverage, na.rm = TRUE))/100),
+  r("Stdev coverage", sd(coverage, na.rm = TRUE)),
+)
+rm(coverage)
+```
+
+
 ## Evals per package
 
 ```{r per package}
@@ -141,20 +178,21 @@ res <- COVR %>%
   mutate(
     static_call_sites=replace_na(static_call_sites, 0),
     missed_call_sites=replace_na(missed_call_sites, 0),
-    missed_ratio=missed_call_sites/static_call_sites*100
+    missed_ratio=missed_call_sites/static_call_sites*100,
+    norm_missed_ratio=(missed_call_sites/(static_call_sites*coverage/100))*100
   ) %>% 
   arrange(package)
 ```
 
-```{r echo=TRUE}
-res %>% 
-  filter(missed_ratio==100, coverage >= 50) %>% 
-  mutate(label=ifelse(static_call_sites >= 5, package, NA)) %>% 
-  ggplot(aes(x=coverage, y=static_call_sites, label=label)) + geom_point() + geom_label(nudge_y = 1)
-```
-
-
 ```{r results='asis'}
-knitr::kable(res)
+target_fun <- if (knitr::opts_knit$get("rmarkdown.pandoc.to") == "gfm") {
+  knitr::kable
+} else {
+  function(df) DT::datatable(df, filter = list(position = 'top', clear = FALSE))
+}
+
+res %>% 
+  filter(missed_ratio > 0) %>% 
+  target_fun  
 ```
 
