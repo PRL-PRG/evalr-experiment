@@ -239,6 +239,7 @@ $(CORPUS) $(CORPUS_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_RUNNABLE_CODE_E
     --functions $(PACKAGE_FUNCTIONS_CSV) \
     --revdeps $(PACKAGE_REVDEPS_CSV) \
     --sloc $(PACKAGE_SLOC_CSV) \
+    --coverage $(PACKAGE_COVERAGE_CSV) \
     --runnable-code $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) \
     --evals-static $(PACKAGE_EVALS_STATIC_CSV) \
     --out-corpus $(CORPUS) \

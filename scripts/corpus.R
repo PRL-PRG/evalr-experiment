@@ -55,6 +55,15 @@ process_revdeps <- function(raw) {
     rename(revdeps=n)
 }
 
+process_coverage <- function(raw) {
+  raw %>%
+    filter(type=="all") %>%
+    select(
+      package,
+      coverage=coverage_expression
+    )
+}
+
 process_runnable_code <- function(raw) {
   df <- raw %>%
     filter(language=="R") %>%
@@ -100,6 +109,7 @@ run <- function(metadata_file,
                 functions_file,
                 sloc_file,
                 revdeps_file,
+                coverage_file,
                 runnable_code_file,
                 evals_static_file,
                 out_corpus_file,
@@ -156,6 +166,23 @@ run <- function(metadata_file,
     tibble(package=character(0), revdeps=integer(0))
   }
 
+  coverage <- if (file.exists(coverage_file)) {
+    process_coverage(
+      read_csv(
+        coverage_file,
+        col_types=cols(
+          package = col_character(),
+          type = col_character(),
+          error = col_character(),
+          coverage_line = col_double(),
+          coverage_expression = col_double()
+        )
+      )
+    )
+  } else {
+    tibble(package=character(0), coverage=double(0))
+  }
+
   runnable_code <- process_runnable_code(
     read_csv(
       runnable_code_file,
@@ -171,23 +198,28 @@ run <- function(metadata_file,
     )
   )
 
-  evals_static <- process_evals_static(
-    read_csv(
-      evals_static_file,
-      col_types=cols(
-        package = col_character(),
-        fun_name = col_character(),
-        srcref = col_character(),
-        call_fun_name = col_character(),
-        args = col_character()
+  evals_static <- if (file.exists(evals_static_file)) {
+    process_evals_static(
+      read_csv(
+        evals_static_file,
+        col_types=cols(
+          package = col_character(),
+          fun_name = col_character(),
+          srcref = col_character(),
+          call_fun_name = col_character(),
+          args = col_character()
+        )
       )
     )
-  )
+  } else {
+    tibble(package=character(0), funs_with_eval=integer(0), evals=integer(0))
+  }
 
   all <- metadata %>%
     left_join(functions, by="package") %>%
     left_join(sloc, by="package") %>%
     left_join(revdeps, by="package") %>%
+    left_join(coverage, by="package") %>%
     left_join(runnable_code, by="package") %>%
     left_join(evals_static, by="package")
 
@@ -207,6 +239,8 @@ option_list <- list(
               dest="functions_file", metavar="FILE"),
   make_option("--revdeps", help="File with revdeps",
               dest="revdeps_file", metavar="FILE"),
+  make_option("--coverage", help="File with coverage",
+              dest="coverage_file", metavar="FILE"),
   make_option("--sloc", help="File with revdeps",
               dest="sloc_file", metavar="FILE"),
   make_option("--runnable-code", help="File with runnable code",
