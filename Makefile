@@ -638,7 +638,7 @@ SHELL_CMD ?= bash
 shell:
 	docker run \
     --rm \
-    --name "$(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$(DOCKER_SHELL_CONTAINER_NAME) | wc -l | tr -d '[:space:]')" \
+    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$$USER-evalr-shell --format '{{.Names}}' | Rscript -e 'cat(max(1+as.integer(sub(pattern=".*-(\\d+)$$", "\\1", readLines(file("stdin"))))),"\n")') \
     --privileged \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
