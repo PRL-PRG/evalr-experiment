@@ -487,7 +487,9 @@ package-runnable-code-eval:
 	@$(MAKE) $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_RUNNABLE_CODE_EVAL_STATS)
 
 .PHONY: package-evals-static
-package-evals-static: $(PACKAGE_EVALS_STATIC_CSV)
+package-evals-static:
+	$(ROLLBACK) $(PACKAGE_EVALS_STATIC_DIR)
+	@$(MAKE) $(PACKAGE_EVALS_STATIC_CSV)
 
 .PHONY: corpus
 package-corpus: $(CORPUS) $(CORPUS_DETAILS)
