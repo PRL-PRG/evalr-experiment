@@ -516,6 +516,9 @@ package-preprocess:
 	cp -f $(CORPUS) $(PACKAGE_PREPROCESS_DIR)/corpus.txt
 	cp -f $(CORPUS_DETAILS) $(PACKAGE_PREPROCESS_DIR)/corpus.fst
 	cp -f $(PACKAGE_EVALS_STATIC_CSV) $(PACKAGE_PREPROCESS_DIR)/evals-static.csv
+	cp -f $(PACKAGE_TRACE_EVAL_STATS) $(PACKAGE_PREPROCESS_DIR)/trace-log.csv
+	cp -f $(PACKAGE_RUN_STATS) $(PACKAGE_PREPROCESS_DIR)/run-log.csv
+	cp -f $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_PREPROCESS_DIR)/runnable-code.csv
 
 package-all: package-trace-eval package-run package-coverage
 
