@@ -38,10 +38,6 @@ RUN wget -O /tmp/fd.deb https://github.com/sharkdp/fd/releases/download/v8.2.1/f
   dpkg -i /tmp/fd.deb && \
   rm -f /tmp/fd.deb
 
-RUN pip3 install gdbgui
-
-RUN pip3 install scan-build
-
 ENV R_PROJECT_BASE_DIR="/R" \
     TERM=xterm
 
