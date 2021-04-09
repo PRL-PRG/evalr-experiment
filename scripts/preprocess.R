@@ -441,7 +441,7 @@ preprocess_calls <- function(arguments) {
     cat("Only keep eval in corpus\n")
     now <- Sys.time()
     corpus <- readLines(corpus_file)
-    corpus_files <- enframe(corpus, name = NULL, value = "package")
+    corpus_files <- tibble(package=corpus)
     eval_calls_corpus <- eval_calls %>% keep_only_corpus(corpus_files)
     eval_calls_externals <- eval_calls %>% get_externals(corpus_files)
     eval_calls <- eval_calls_corpus
