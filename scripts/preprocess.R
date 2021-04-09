@@ -552,7 +552,7 @@ parse_program_arguments <- function() {
     ),
     make_option(
       c("--keep-caller-package"),
-      action = "store_true", dest = "kaggle", default = FALSE,
+      action = "store_true", dest = "keep_caller_package", default = FALSE,
     ),
     make_option(
       c("--out"),
