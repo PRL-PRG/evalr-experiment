@@ -331,7 +331,9 @@ add_fake_srcref <- function(df) {
 
   df %>%
     filter(!is.na(eval_call_srcref)) %>%
-    bind_rows(df_na)
+    bind_rows(df_na) %>%
+    mutate(eval_call_srcref=if_else(eval_call_expression=="eval(handler$expr, handler$envir)", "::withr::execute_handlers::1", eval_call_srcref)) %>%
+    mutate(eval_call_srcref=if_else(eval_call_srcref=="/tmp/RtmpX0d2E3/R.INSTALLce274ec00947/ggplot2/R/ggproto.r:76:5:76:31", "::ggplot2::ggproto::1", eval_call_srcref))
 }
 
 keep_only_corpus <- function(dataset, corpus_files) {
@@ -372,6 +374,7 @@ preprocess_calls <- function(arguments) {
   evals_summarized_file <- arguments$evals_summarized_file
   evals_summarized_externals_file <- arguments$evals_summarized_externals_file
   trim_expressions <- arguments$trim_expressions
+  keep_caller_package <- arguments$keep_caller_package
   out_name <- arguments$out_name
   is_kaggle <- arguments$kaggle
 
@@ -421,6 +424,9 @@ preprocess_calls <- function(arguments) {
   res <- difftime(Sys.time(), now)
   cat("Done in ", res, units(res), "\n")
 
+  if(!keep_caller_package) {
+    eval_calls <- eval_calls %>% select(-caller_package)
+  }
 
   # Trim expressions if needed
   if (trim_expressions) {
@@ -511,7 +517,7 @@ parse_program_arguments <- function() {
   option_list <- list(
     make_option(
       c("--corpus"),
-      dest = "corpus_file", metavar = "FILE", default = NA,
+      dest = "corpus_file", metavar = "FILE",
       help = "Corpus file"
     ),
     make_option(
@@ -542,6 +548,10 @@ parse_program_arguments <- function() {
     ),
     make_option(
       c("--kaggle"),
+      action = "store_true", dest = "kaggle", default = FALSE,
+    ),
+    make_option(
+      c("--keep-caller-package"),
       action = "store_true", dest = "kaggle", default = FALSE,
     ),
     make_option(
