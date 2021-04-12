@@ -409,6 +409,9 @@ preprocess_calls <- function(arguments) {
   cat("Correcting srcrefs\n")
   now <- Sys.time()
   eval_calls <- eval_calls %>% add_fake_srcref()
+  # We manually corrected the src ref for that withr function so now we need
+  # to correct its eval source manually!
+  eval_calls <- eval_calls %>% mutate(eval_source = if_else(eval_call_srcref == "::withr::execute_handlers::1", "withr", eval_source))
   if(is_kaggle) {
     cat("Fixing kaggle srcref\n")
     stopifnot(str_starts(eval_calls$eval_call_srcref, fixed("::global")))
