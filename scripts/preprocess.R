@@ -440,6 +440,13 @@ preprocess_calls <- function(arguments) {
     cat("Done in ", res, units(res), "\n")
   }
 
+  cat("Undefined calls per package\n")
+  now <- Sys.time()
+  undefined_per_package <- undefined_packages(eval_calls)
+  eval_calls <- eval_calls %>% filter(eval_source != "base?")
+  res <- difftime(Sys.time(), now)
+  cat("Done in ", res, units(res), "\n")
+
   if (!is.na(corpus_file)) {
     cat("Only keep eval in corpus\n")
     now <- Sys.time()
@@ -456,13 +463,6 @@ preprocess_calls <- function(arguments) {
   }
 
 
-  # Some other interesting data
-  cat("Undefined calls per package\n")
-  now <- Sys.time()
-  undefined_per_package <- undefined_packages(eval_calls)
-  eval_calls <- eval_calls %>% filter(eval_source != "base?")
-  res <- difftime(Sys.time(), now)
-  cat("Done in ", res, units(res), "\n")
 
   # Write output files
   cat("Writing output files\n")
