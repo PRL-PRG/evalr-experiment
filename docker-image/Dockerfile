@@ -6,6 +6,8 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get install -yqq \
       gdb \
       locales \
+      libharfbuzz-dev \
+      libfribidi-dev \
       openssh-server \
       python3-pip \
       rr
