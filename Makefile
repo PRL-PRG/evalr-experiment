@@ -649,20 +649,19 @@ SHELL_CMD ?= bash
 
 .PHONY: shell
 shell:
+	[ -d $(DOCKER_VOL_LIBRARY) ] || mkdir -p $(DOCKER_VOL_LIBRARY)
 	docker run \
     --rm \
-    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$$USER-evalr-shell --format '{{.Names}}' | Rscript -e 'cat(max(1+as.integer(sub(pattern=".*-(\\d+)$$", "\\1", readLines(file("stdin"))))),"\n")') \
+    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(openssl rand -hex 2) \
     --privileged \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
-    -v $$(readlink -f $(CURDIR)/CRAN):$(CURDIR)/CRAN \
-    -v $$(readlink -f $(CURDIR)/library):$(CURDIR)/library \
-    -v $$(readlink -f $$SSH_AUTH_SOCK):/ssh-agent \
-    -v $$(readlink -f ~/.gitconfig):/home/r/.gitconfig \
-    -e SSH_AUTH_SOCK=/ssh-agent \
+    -v $$(readlink -f $(CRAN_DIR)):$(CRAN_DIR) \
+    -v $$(readlink -f $(LIBRARY_DIR)):$(LIBRARY_DIR) \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
     -e R_LIBS=$(LIBRARY_DIR) \
+    -e TZ=Europe/Prague \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \
     $(SHELL_CMD)
