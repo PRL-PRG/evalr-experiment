@@ -595,8 +595,8 @@ endef
 
 define INSTALL_EVALR_LIB
 	$(call LOG,Installing evalr library: $(1))
-	if [ -d "$(1)" ]; then git -C $(1) pull; else git clone https://github.com/PRL-PRG/$(1); fi
-	make -C $(1) install
+	@if [ ! -d "$(1)" ]; then echo "Missing $(1) repository, please run: git clone https://github.com/PRL-PRG/$(1)"; exit 1; fi
+	make -C $(1) clean install
 endef
 
 .PHONY: libs-dependencies
