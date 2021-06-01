@@ -58,7 +58,8 @@ TRACE_EVAL_RESULTS := \
   reads.fst \
   reflection.fst \
   writes.fst \
-  resolved-expressions.fst
+  resolved-expressions.fst \
+  provenances.fst
 
 .PHONY: FORCE
 ########################################################################
@@ -110,6 +111,7 @@ PACKAGE_TRACE_EVAL_CALLS			:= $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
 PACKAGE_TRACE_EVAL_CODE				:= $(PACKAGE_TRACE_EVAL_DIR)/code.fst
 PACKAGE_TRACE_EVAL_REFLECTION := $(PACKAGE_TRACE_EVAL_DIR)/reflection.fst
 PACKAGE_TRACE_EVAL_WRITES     := $(PACKAGE_TRACE_EVAL_DIR)/writes.fst
+PACKAGE_TRACE_EVAL_PROVENANCES := $(PACKAGE_TRACE_EVAL_DIR)/provenances.fst
 PACKAGE_SCRIPTS_TO_RUN_TXT		:= $(RUN_DIR)/package-scripts-to-run.txt
 PACKAGE_EVALS_TO_TRACE				:= $(RUN_DIR)/package-evals-to-trace.txt
 
