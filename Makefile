@@ -275,6 +275,8 @@ $(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE=packages
 $(PACKAGE_TRACE_EVAL_STATS): export EVALS_IMPUTE_SRCREF_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_EVALS_TO_TRACE) $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(call LOG,PACKAGE EVAL TRACING)
+	@echo EVALS_TO_TRACE=$$EVALS_TO_TRACE
+	@echo EVALS_IMPUTE_SRCREF_FILE=$$EVALS_IMPUTE_SRCREF_FILE
 	-$(MAP) -f $(PACKAGE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE \
     --env EVALS_IMPUTE_SRCREF_FILE \
@@ -595,8 +597,8 @@ endef
 
 define INSTALL_EVALR_LIB
 	$(call LOG,Installing evalr library: $(1))
-	if [ -d "$(1)" ]; then git -C $(1) pull; else git clone https://github.com/PRL-PRG/$(1); fi
-	make -C $(1) install
+	@if [ ! -d "$(1)" ]; then echo "Missing $(1) repository, please run: git clone https://github.com/PRL-PRG/$(1)"; exit 1; fi
+	make -C $(1) clean install
 endef
 
 .PHONY: libs-dependencies
@@ -651,20 +653,19 @@ SHELL_CMD ?= bash
 
 .PHONY: shell
 shell:
+	[ -d $(DOCKER_VOL_LIBRARY) ] || mkdir -p $(DOCKER_VOL_LIBRARY)
 	docker run \
     --rm \
-    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(docker ps -f name=$$USER-evalr-shell --format '{{.Names}}' | Rscript -e 'cat(max(1+as.integer(sub(pattern=".*-(\\d+)$$", "\\1", readLines(file("stdin"))))),"\n")') \
+    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(openssl rand -hex 2) \
     --privileged \
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
-    -v $$(readlink -f $(CURDIR)/CRAN):$(CURDIR)/CRAN \
-    -v $$(readlink -f $(CURDIR)/library):$(CURDIR)/library \
-    -v $$(readlink -f $$SSH_AUTH_SOCK):/ssh-agent \
-    -v $$(readlink -f ~/.gitconfig):/home/r/.gitconfig \
-    -e SSH_AUTH_SOCK=/ssh-agent \
+    -v $$(readlink -f $(CRAN_DIR)):$(CRAN_DIR) \
+    -v $$(readlink -f $(LIBRARY_DIR)):$(LIBRARY_DIR) \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
     -e R_LIBS=$(LIBRARY_DIR) \
+    -e TZ=Europe/Prague \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \
     $(SHELL_CMD)
