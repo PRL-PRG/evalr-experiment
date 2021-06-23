@@ -591,7 +591,7 @@ snapshot:
 	[ -d $(PACKAGE_PREPROCESS_DIR)/package-backup ] && mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR) || true
 
 define PKG_INSTALL_FROM_FILE
-	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages()), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=$(JOBS))'
+	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages()[,1]), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=$(JOBS))'
 	find $(CRAN_ZIP_DIR) -name "*.tar.gz" | parallel --bar --workdir CRAN/extracted tar xfz
 endef
 
@@ -603,10 +603,11 @@ endef
 
 .PHONY: libs-dependencies
 libs-dependencies:
-	-mkdir -p $(LIBRARY_DIR)
-	-mkdir -p $(CRAN_ZIP_DIR)
-	-mkdir -p $(CRAN_SRC_DIR)
-	$(call PKG_INSTALL_FROM_FILE,evalr-dependencies.txt)
+	$(call LOG,Installing lib dependencies: $@)
+	[ -d $(LIBRARY_DIR) ]  || mkdir -p $(LIBRARY_DIR)
+	[ -d $(CRAN_ZIP_DIR) ] || mkdir -p $(CRAN_ZIP_DIR)
+	[ -d $(CRAN_SRC_DIR) ] || mkdir -p $(CRAN_SRC_DIR)
+	$(call PKG_INSTALL_FROM_FILE,dependencies.txt)
 
 .PHONY: injectr
 injectr:
@@ -625,7 +626,7 @@ evil:
 	$(call INSTALL_EVALR_LIB,$@)
 
 .PHONY: libs
-libs: injectr instrumentr evil runr
+libs: libs-dependencies injectr instrumentr evil runr
 
 .PHONY: install-packages
 install-packages:
