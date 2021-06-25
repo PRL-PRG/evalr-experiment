@@ -2,55 +2,53 @@
 MAKEFLAGS += --no-builtin-rules
 .SUFFIXES:
 
-# TODO: add support for blacklisting packages (e.g. H2O)
-
 include Makevars
 
-# This file contains a list of all packages we want to include.
-# We will get metadata from them including static eval call sites.
+# This file contains a list of all packages we want to include
+# We will get metadata from them including static eval call sites
 PACKAGES := packages.txt
 
 # the 13 packages that comes with R inc base
 PACKAGES_CORE_FILE := packages-core.txt
 
-# environment
+# Environment
 CRAN_LOCAL_MIRROR  := file://$(CRAN_DIR)
 CRAN_SRC_DIR       := $(CRAN_DIR)/extracted
 CRAN_ZIP_DIR       := $(CRAN_DIR)/src/contrib
-R_BIN              := $(R_DIR)/bin/R
-RUN_DIR            := $(PROJECT_BASE_DIR)/run
-RUNR_DIR           := $(CURDIR)/runr
-RUNR_TASKS_DIR     := $(RUNR_DIR)/inst/tasks
-SCRIPTS_DIR        := $(CURDIR)/scripts
+RUNR_TASKS_DIR     := $(RUNR_DIR)/tasks
 
 # A subset of $(PACKAGES); only packages with call sites to eval
 CORPUS             := $(RUN_DIR)/corpus.txt
 CORPUS_DETAILS     := $(RUN_DIR)/corpus.fst
 
-# remote execution
+# Where to fetch the libraries - override if need to clone using SSH
+REPO_BASE_URL ?= "https://github.com"
+# Our libraries required for the experiment
+LIBS := injectr instrumentr evil runr
+
+# Remote execution
 ifeq ($(CLUSTER), 1)
     MAP_EXTRA=--sshloginfile $(SSH_LOGIN_FILE)
     JOBS=100%
 endif
 
-# the number of jobs to run in parallel
-# it is used for GNU parallel and for Ncpus parameter in install.packages
+# The number of jobs to run in parallel
+# It is used for GNU parallel and for Ncpus parameter in install.packages
 JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null || grep -c processor /proc/cpuinfo 2>/dev/null || echo 1)
-# TODO: do not rely on GNU parallel timeout, use timeout binary
+# The timeout used for both the individual tasks in GNU parallel and in the run-r-file.sh
 TIMEOUT       ?= 35m
-# TODO: change so it is the number of scripts rather than number of packages
-BASE_SCRIPTS_TO_RUN_SIZE := 25000
+# Max scripts to run for tracing evals in the base package
+BASE_SCRIPTS_TO_RUN_SIZE ?= 25000
 
-# tools
-MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
-R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
-RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
-MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
+# Tools
+MAP       := $(RUNR_DIR)/map.sh -j $(JOBS) $(MAP_EXTRA)
+MERGE     := $(RSCRIPT) $(RUNR_DIR)/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 CAT       := $(SCRIPTS_DIR)/cat.R
 
 # A template that is used to wrap the extracted runnable code from packages.
 TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
+# Tracing results to be merged
 TRACE_EVAL_RESULTS := \
   calls.fst \
   code.fst \
@@ -160,21 +158,39 @@ KAGGLE_TRACE_EVAL_CALLS := $(KAGGLE_TRACE_EVAL_DIR)/calls.fst
 KAGGLE_TRACE_EVAL_REFLECTION := $(KAGGLE_TRACE_EVAL_DIR)/reflection.fst
 
 ########################################################################
-# TARGETS                                                              #
+# MACROS
 ########################################################################
 
-txtbold := $(shell tput bold)
-txtred  := $(shell tput setaf 2)
-txtsgr0 := $(shell tput sgr0)
-
-define LOG
-	@echo -n "$(txtbold)"
-	@echo "----------------------------------------------------------------------"
-	@echo "=> $(txtred)$(1)$(txtsgr0)"
-	@echo -n "$(txtbold)"
-	@echo "----------------------------------------------------------------------"
-	@echo -n "$(txtsgr0)"
+define PKG_INSTALL_FROM_FILE
+	$(call LOG,Installing packages from file: $(1))
+	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages("$(R_LIBS)")[,1]), dependencies=TRUE, repos="$(CRAN_MIRROR)", destdir="$(CRAN_ZIP_DIR)", Ncpus=$(JOBS))'
+	$(call LOG,Extracting package source)
+	@for f in $$(find $(CRAN_ZIP_DIR) -name "*.tar.gz"); do \
+		d=$(CRAN_SRC_DIR)/$$(basename $$f | sed 's/\([^_]*\).*/\1/'); \
+		[ -d $$d ] || { echo "- $$(basename $$f)"; tar xfz $$f -C $(CRAN_SRC_DIR); } \
+	done
 endef
+
+define INSTALL_EVALR_LIB
+	$(call LOG,Installing evalr library: $(1))
+	make -C $(1) clean install
+endef
+
+# note: the extra new-line at the end of the macro is important
+#       because it is called from a foreach macro
+define CLONE_REPO
+  $(call LOG,Repo $(REPO_BASE_URL)/$(1)/$(2))
+	if [ -d $(2) ]; then git -C $(2) pull; else git clone $(REPO_BASE_URL)/$(1)/$(2); fi
+
+endef
+
+define ASSERT_NOT_IN_DOCKER
+	@if [ -n "$$IN_DOCKER" ]; then echo "This make target ($@) should not be run in docker!"; exit 1; fi
+endef
+
+########################################################################
+# PACKAGES related targets
+########################################################################
 
 $(PACKAGE_METADATA_STATS): $(PACKAGES)
 	$(call LOG,PACKAGE METADATA)
@@ -248,16 +264,12 @@ $(CORPUS) $(CORPUS_DETAILS): $(PACKAGE_METADATA_FILES) $(PACKAGE_RUNNABLE_CODE_E
     --out-corpus $(CORPUS) \
     --out-corpus-details $(CORPUS_DETAILS)
 
-########################################################################
-# PACKAGES
-########################################################################
 $(PACKAGE_SCRIPTS_TO_RUN_TXT): $(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
 	$(call LOG,LIST OF SCRIPTS TO RUN)
 	$(CAT) -c package,file -d '/' --no-header $< > $@
 
 # need to explicitly state the dependency on PACKAGE_RUNNABLE_CODE_STATS because
 # the PACKAGE_SCRIPTS_TO_RUN_TXT is generated from the eval data
-# TODO: generate separate file for the running
 .PRECIOUS: $(PACKAGE_RUN_STATS)
 $(PACKAGE_RUN_STATS): $(PACKAGE_RUNNABLE_CODE_STATS) $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(call LOG,PACKAGE RUN)
@@ -275,8 +287,8 @@ $(PACKAGE_TRACE_EVAL_STATS): export EVALS_TO_TRACE=packages
 $(PACKAGE_TRACE_EVAL_STATS): export EVALS_IMPUTE_SRCREF_FILE=$(realpath $(PACKAGE_EVALS_TO_TRACE))
 $(PACKAGE_TRACE_EVAL_STATS): $(PACKAGE_EVALS_TO_TRACE) $(PACKAGE_SCRIPTS_TO_RUN_TXT)
 	$(call LOG,PACKAGE EVAL TRACING)
-	@echo EVALS_TO_TRACE=$$EVALS_TO_TRACE
-	@echo EVALS_IMPUTE_SRCREF_FILE=$$EVALS_IMPUTE_SRCREF_FILE
+	@echo "- Tracing evals (EVALS_TO_TRACE): $$EVALS_TO_TRACE"
+	@echo "- Evals srcref (EVALS_IMPUTE_SRCREF_FILE): $$EVALS_IMPUTE_SRCREF_FILE"
 	-$(MAP) -f $(PACKAGE_SCRIPTS_TO_RUN_TXT) -o $(@D) -e $(SCRIPTS_DIR)/run-r-file.sh --no-exec-wrapper \
     --env EVALS_TO_TRACE \
     --env EVALS_IMPUTE_SRCREF_FILE \
@@ -395,7 +407,6 @@ $(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
 # PREPROCESS
 ########################################################################
 PREPROCESS_TYPE ?= "all"
-PREPROCESS_DIR      := $(RUN_DIR)/preprocess
 
 PACKAGE_PREPROCESS_DIR			:= $(PREPROCESS_DIR)/package
 PACKAGE_SUM_FILE						:= $(PACKAGE_PREPROCESS_DIR)/summarized.fst
@@ -458,6 +469,7 @@ $(KAGGLE_NORMALIZED_EXPR_FILE): $(KAGGLE_RESOLVED_EXPRESSIONS)
 	$(RSCRIPT) $(SCRIPTS_DIR)/norm.R -f $< > $@
 
 $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
+	$(call LOG,PREPROCESSING BASE DATA)
 	-mkdir -p $(@D)
 	$(RSCRIPT) $(SCRIPTS_DIR)/preprocess.R \
     $(PREPROCESS_TYPE) \
@@ -469,6 +481,7 @@ $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
     --out-undefined $(BASE_SUM_UNDEFINED_FILE)
 
 $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(KAGGLE_CORPUS_FILE)
+	$(call LOG,PREPROCESSING KAGGLE DATA)
 	-mkdir -p $(@D)
 	$(RSCRIPT) $(SCRIPTS_DIR)/preprocess.R \
     $(PREPROCESS_TYPE) \
@@ -483,6 +496,10 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(K
 ########################################################################
 # TASKS
 ########################################################################
+
+.PHONY: package-install
+package-install:
+	$(call PKG_INSTALL_FROM_FILE,$(PACKAGES))
 
 .PHONY: package-metadata
 package-metadata: $(PACKAGE_METADATA_FILES) $(PACKAGE_METADATA_STATS)
@@ -505,7 +522,7 @@ package-evals-static:
 	$(ROLLBACK) $(PACKAGE_EVALS_STATIC_DIR)
 	@$(MAKE) $(PACKAGE_EVALS_STATIC_CSV)
 
-.PHONY: corpus
+.PHONY: package-corpus
 package-corpus: $(CORPUS) $(CORPUS_DETAILS)
 
 .PHONY: package-run
@@ -523,9 +540,15 @@ package-normalization:
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
 
 .PHONY: package-preprocess
-package-preprocess:
+package-preprocess: $(CORPUS) \
+	$(CORPUS_DETAILS) \
+	$(PACKAGE_EVALS_STATIC_CSV) \
+	$(PACKAGE_TRACE_EVAL_STATS) \
+	$(PACKAGE_RUN_STATS) \
+	$(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
+
 	$(ROLLBACK) $(PACKAGE_PREPROCESS_DIR)
-	@$(MAKE) $(PACKAGE_PREPROCESS_FILES)
+	@$(MAKE) $(PACKAGE_PREPROCESS_FILES) $(PACKAGE_SIDE_EFFECTS_FILE)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
 	cp -f $(CORPUS) $(PACKAGE_PREPROCESS_DIR)/corpus.txt
 	cp -f $(CORPUS_DETAILS) $(PACKAGE_PREPROCESS_DIR)/corpus.fst
@@ -534,7 +557,7 @@ package-preprocess:
 	cp -f $(PACKAGE_RUN_STATS) $(PACKAGE_PREPROCESS_DIR)/run-log.csv
 	cp -f $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_PREPROCESS_DIR)/runnable-code.csv
 
-package-all: package-trace-eval package-run package-coverage
+package-all: package-install package-trace-eval package-run package-coverage
 
 .PHONY: kaggle-kernels
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
@@ -550,13 +573,15 @@ kaggle-trace-eval:
 	@$(MAKE) $(KAGGLE_TRACE_EVAL_FILES)
 
 .PHONY: kaggle-preprocess
-kaggle-preprocess:
+kaggle-preprocess: $(KAGGLE_CORPUS_FILE) $(KAGGLE_KERNELS_CSV) $(KAGGLE_TRACE_EVAL_STATS)
 	$(ROLLBACK) $(KAGGLE_PREPROCESS_DIR)
 	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
 	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
 	@$(MAKE) $(KAGGLE_CORPUS_FILE)
 	cp -f $(KAGGLE_CORPUS_FILE) $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	$(RSCRIPT) -e 'x <- read.csv("$(KAGGLE_KERNELS_EVALS_STATIC_CSV)"); x[, "srcref"] <- paste0(x[, "package"],  x[, "srcref"]); write.csv(x, "$(KAGGLE_PREPROCESS_DIR)/evals-static.csv", row.names=F)'
+	cp -f $(KAGGLE_KERNELS_CSV) $(KAGGLE_PREPROCESS_DIR)
+	cp -f $(KAGGLE_TRACE_EVAL_STATS) $(KAGGLE_PREPROCESS_DIR)/trace-log.csv
 
 .PHONY: base-evals-static
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
@@ -571,9 +596,8 @@ base-trace-eval:
 	$(ROLLBACK) $(BASE_TRACE_EVAL_DIR)
 	@$(MAKE) $(BASE_TRACE_EVAL_FILES)
 
-
 .PHONY: base-preprocess
-base-preprocess:
+base-preprocess: $(BASE_EVALS_STATIC_CSV)
 	$(ROLLBACK) $(BASE_PREPROCESS_DIR)
 	@$(MAKE) $(BASE_PREPROCESS_FILES)
 	@$(MAKE) $(BASE_NORMALIZED_EXPR_FILE)
@@ -584,30 +608,9 @@ base-preprocess:
 .PHONY: preprocess
 preprocess: package-preprocess base-preprocess kaggle-preprocess
 
-snapshot:
-	[ -d $(PACKAGE_PREPROCESS_DIR)/package ] && mv $(PACKAGE_PREPROCESS_DIR)/package $(PREPROCESS_DIR)/package-backup || true
-	$(MAKE) package-preprocess
-	mv $(PREPROCESS_DIR)/package $(PREPROCESS_DIR)/package-snapshot
-	[ -d $(PACKAGE_PREPROCESS_DIR)/package-backup ] && mv $(PREPROCESS_DIR)/package-backup $(PACKAGE_PREPROCESS_DIR) || true
-
-define PKG_INSTALL_FROM_FILE
-	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages()[,1]), dependencies=TRUE, destdir="$(CRAN_ZIP_DIR)", repos="$(CRAN_MIRROR)", Ncpus=$(JOBS))'
-	find $(CRAN_ZIP_DIR) -name "*.tar.gz" | parallel --bar --workdir CRAN/extracted tar xfz
-endef
-
-define INSTALL_EVALR_LIB
-	$(call LOG,Installing evalr library: $(1))
-	@if [ ! -d "$(1)" ]; then echo "Missing $(1) repository, please run: git clone https://github.com/PRL-PRG/$(1)"; exit 1; fi
-	make -C $(1) clean install
-endef
-
 .PHONY: libs-dependencies
-libs-dependencies:
-	$(call LOG,Installing lib dependencies: $@)
-	[ -d $(LIBRARY_DIR) ]  || mkdir -p $(LIBRARY_DIR)
-	[ -d $(CRAN_ZIP_DIR) ] || mkdir -p $(CRAN_ZIP_DIR)
-	[ -d $(CRAN_SRC_DIR) ] || mkdir -p $(CRAN_SRC_DIR)
-	$(call PKG_INSTALL_FROM_FILE,dependencies.txt)
+libs-dependencies: $(DEPENDENCIES_TXT)
+	$(call PKG_INSTALL_FROM_FILE,$(DEPENDENCIES_TXT))
 
 .PHONY: injectr
 injectr:
@@ -625,61 +628,83 @@ runr:
 evil:
 	$(call INSTALL_EVALR_LIB,$@)
 
-.PHONY: libs
-libs: libs-dependencies injectr instrumentr evil runr
+.PHONY: libs-install
+libs-install: $(LIBS)
 
-.PHONY: install-packages
-install-packages:
-	$(call PKG_INSTALL_FROM_FILE,$(PACKAGES))
+.PHONY: libs-clone
+libs-clone:
+	@$(foreach repo,$(LIBS),$(call CLONE_REPO,PRL-PRG,$(repo)))
+
+.PHONY: libs
+libs: libs-clone libs-install
 
 define INFO
   @echo "$(1)=$($(1))"
 endef
 
-.PHONY: envir
-envir:
-	$(call INFO,CRAN_LOCAL_MIRROR)
+.PHONY: info
+info:
 	$(call INFO,CRAN_DIR)
+	$(call INFO,CRAN_LOCAL_MIRROR)
 	$(call INFO,CURDIR)
-	$(call INFO,LIBRARY_DIR)
+	$(call INFO,R_LIBS)
 	$(call INFO,R_BIN)
 	$(call INFO,RUN_DIR)
 	@echo "---"
 	$(call INFO,JOBS)
 	$(call INFO,TIMEOUT)
 
-DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
+.PHONY: package-analysis
+package-analysis:
+	$(MAKE) -C analysis package
 
+.PHONY: base-analysis
+base-analysis:
+	$(MAKE) -C analysis base
+
+.PHONY: analysis
+analysis:
+	$(MAKE) -C analysis all
+
+DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
+# default shell command
 SHELL_CMD ?= bash
+# additional docker run params
+SHELL_EXTRA ?=
 
 .PHONY: shell
 shell:
-	[ -d $(DOCKER_VOL_LIBRARY) ] || mkdir -p $(DOCKER_VOL_LIBRARY)
+	$(call ASSERT_NOT_IN_DOCKER)
+	@[ -d $(R_LIBS) ] || mkdir -p $(R_LIBS)
+	@[ -d $(CRAN_ZIP_DIR) ] || mkdir -p $(CRAN_ZIP_DIR)
+	@[ -d $(CRAN_SRC_DIR) ] || mkdir -p $(CRAN_SRC_DIR)
 	docker run \
     --rm \
-    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(openssl rand -hex 2) \
+    --name $(DOCKER_SHELL_CONTAINER_NAME)-$$RANDOM \
     --privileged \
     -ti \
-    -v "$(CURDIR):$(CURDIR)" \
-    -v $$(readlink -f $(CRAN_DIR)):$(CRAN_DIR) \
-    -v $$(readlink -f $(LIBRARY_DIR)):$(LIBRARY_DIR) \
+    -v $(CURDIR):$(CURDIR) \
+    -v $$($(READLINK) $(CRAN_DIR)):$(CRAN_DIR) \
+    -v $$($(READLINK) $(R_LIBS)):$(R_LIBS) \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
-    -e R_LIBS=$(LIBRARY_DIR) \
+    -e R_LIBS=$(R_LIBS) \
     -e TZ=Europe/Prague \
     -w $(CURDIR) \
+    $(SHELL_EXTRA) \
     $(DOCKER_IMAGE_NAME) \
     $(SHELL_CMD)
 
 .PHONY: rstudio
 rstudio:
+	$(call ASSERT_NOT_IN_DOCKER)
 	if [ -z "$$PORT" ]; then echo "Missing PORT"; exit 1; fi
 	docker run \
     --rm \
     --name "$$USER-evalr-rstudio-$$PORT" \
     -d \
     -p "$$PORT:8787" \
-    -v "$(CURDIR):$(CURDIR)" \
+    -v $(CURDIR):$(CURDIR) \
     -e USERID=$$(id -u) \
     -e GROUPID=$$(id -g) \
     -e ROOT=true \
@@ -688,16 +713,20 @@ rstudio:
 
 .PHONY: docker-image
 docker-image:
+	$(call ASSERT_NOT_IN_DOCKER)
 	$(MAKE) -C docker-image
 
 .PHONY: update-all
 update-all:
+	$(call ASSERT_NOT_IN_DOCKER)
 	docker pull prlprg/r-dyntrace:r-4.0.2
 	$(MAKE) docker-image
+	$(MAKE) libs-clone
 	$(MAKE) shell SHELL_CMD="make libs"
 
 .PHONY: httpd
 httpd:
+	$(call ASSERT_NOT_IN_DOCKER)
 	docker run \
     --rm \
     -d \
@@ -705,3 +734,8 @@ httpd:
     -p 80:80 \
     -v $(PROJECT_BASE_DIR):/usr/local/apache2/htdocs$(PROJECT_BASE_DIR) \
     httpd:2.4
+
+.PHONY: readme
+readme:
+	$(call ASSERT_NOT_IN_DOCKER)
+	R --quiet --no-save -e 'rmarkdown::render("README.md", output_format="all")'

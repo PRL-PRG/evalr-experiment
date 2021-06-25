@@ -1,96 +1,125 @@
-# evalr-experiment
+## Introduction
 
-This is a skeleton project for running evalr experiments.
+This repository contains a data analysis pipeline for analyzing the use of
+`eval` function in R in the wild. The reason is that using `eval` hinders
+static analysis and prevents compilers from performing optimizations. Why try
+to provide a better sense of how much and why programmers use `eval` in R.
+Understanding why `eval` is used in practice is key to finding ways to mitigate
+its negative impact.
 
-## Getting started guide
+## Usage
 
-``` sh
-$ git clone ssh://git@github.com/PRL-PRG/evalr-experiment
-$ cd evalr-experiment
-```
-**Important: all of the following commands should be run inside the cloned repository!**
+There is a step-by-step guide in `TUTORIAL.md`.
 
-If the docker image has not yet been created, run
+## Preparing the experimental environment
 
-```sh
-$ make -C docker-image
-```
+There are three mode operandi:
 
-Get into docker
+1. *docker-local* - running the analysis locally inside a docker container (preferred)
+1. *local* - running the analysis locally (useful for debugging)
+1. *docker-cluster* - running the analysis in a cluster composed of docker-local containers
 
-``` sh
-$ make shell
-```
+All options require that you have cloned the repository.
+All further commands should be run inside the repository.
 
-Get the dependencies. The reason why we do not put them yet in the image is that
-we might want to have some local changes to them.
+### docker-local
 
-```sh
-docker% make libs-dependencies
-```
+For this one only need GNU make, docker and git (to clone this repository).
 
-Install libraries
+1. Get the docker image
 
-``` sh
-docker% make libs
-```
+    Either pull it from docker hub:
 
-Install packages from `packages.txt`. This has to be done every time, this file
-changes.
+    ```sh
+    docker pull prlprg/project-evalr
+    ```
 
-``` sh
-docker% make install-packages
-```
+    or build locally
 
-## The pipeline
+    ```sh
+    make docker-image
+    ```
 
-### Tracing CRAN packages
+1. If you plan to hack the tracer, you need to install a local copy
 
-To trace packages, run:
+    By default, the docker image contains the tracer already installed in
+    `/R/R-dyntrace/library/evil`. If you want to modify it, create a local
+    copy.
 
-``` sh
-docker% make package-trace-eval
-```
+    Start the docker container
 
-The result should be always in in `run/package-trace-eval`. Older runs will be
-renamed to `run/package-trace-eval.<X>`.
+    ```sh
+    make shell
+    ```
 
-To preprocess the data, run:
+    Install local version of the eval tracer
 
-``` sh
-docker% make package-preprocess
-```
+    ```sh
+    make evil
+    ```
 
-The result should be always in in `run/preprocess/package`. Older runs will be
-renamed to `run/preprocess/package.<X>`. The preprocess will always use the
-latest data from the `package-trace-eval` task. It will not trigger a new
-tracing.
+    or if you plan to hack on other components, you can get local version of all components
 
-### Tracing core packages
+    ```sh
+    make libs
+    ```
 
-_TBA_
+### local
 
-### Tracing Kaggle
+If you know what are you doing, you could also develop locally.
+For this we need to setup the environment:
 
-_TBA_
+1. Install [R-dyntrace](https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2),
+   a modified GNU R 4.0.2 VM that exposes low-level callbacks for a variety of
+   runtime events.
 
-## Debugging when something is wrong
+    ```sh
+    git clone -b r-4.0.2 https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2
+    cd R-dyntrace
+    ./build
+    ```
 
-_TBA_
+1. Set the local environment
 
-## Debugging using gdb
+    ```sh
+    source environment.sh
+    ```
 
-The image has both gdb and gdbgui installed.
-To start a gdbgui session do:
+1. Install tracer dependencies
 
-```sh
-$ make shell
-docker% R -d 'gdbgui -r'
-Warning: authentication is recommended when serving on a publicly accessible IP address. See gdbgui --help.
-View gdbgui at http://172.17.0.3:5000
-View gdbgui dashboard at http://172.17.0.3:5000/dashboard
-exit gdbgui by pressing CTRL+C
-```
+    ```sh
+    make libs-dependencies
+    ```
 
-and then connect to the IP address it suggested.
+1. Install tracer and other pipeline components
 
+    ```sh
+    make libs
+    ```
+
+### docker-cluster
+
+1. Add hostnames into `Makefile.cluster`
+
+1. Setup nodes
+
+    ```sh
+    make -f Makefile.cluster node-setup
+    ```
+
+    ---
+
+    **NOTE**
+
+    - This requires that all the nodes can fetch the docker image.
+    - Run the `node-setup` target in tmux - it creates a new window split pane, one per node
+
+    ---
+
+1. Run any target with `CLUSTER=1`
+
+    For example:
+
+    ```sh
+    make package-trace-eval CLUSTER=1
+    ```

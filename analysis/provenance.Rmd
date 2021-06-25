@@ -1,0 +1,271 @@
+---
+title: "Provenance"
+output:
+  html_document:
+        code_folding: "hide"
+        gallery: false
+        toc: true
+        toc_depth: 3
+        toc_float: true
+        df_print: paged
+date: "`r Sys.Date()`"
+editor_options: 
+  chunk_output_type: console
+params:
+  base_dir: Data/package/
+  output_dir: output
+  calls_path: summarized.fst
+  corpus_path: corpus.txt
+  static_path: evals-static.csv
+  force_rebuild: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) { # record the current time before each chunk
+      now <<- Sys.time()
+    } else { # calculate the time difference after a chunk
+      res <- difftime(Sys.time(), now)
+      # return a character string to show the time
+      paste("Time for this code chunk to run:", res, units(res))
+    }
+  }
+}))
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.align = "center",
+  fig.retina = 2,
+  fig.width = 10,
+  cache.lazy = FALSE
+)
+
+now <- Sys.time()
+
+library(tidyverse)
+library(fst)
+library(fs)
+library(DT)
+
+source("inc/latextags.R")
+source("inc/functions.R")
+source("inc/paths.R")
+theme_set(theme_minimal())
+
+dataset_name <- basename(params$base_dir)
+
+# Tags will be prefixed by the dataset name
+create_tags(path(TAGS_DIR, paste0(dataset_name, "_provenance.tex")), prefix = dataset_name, default = TRUE)
+# Also use ggsave_prefix instead of ggsave if you need to save a graph
+
+calls_path <- file.path(params$base_dir, params$calls_path)
+corpus_path <- file.path(params$base_dir, params$corpus_path)
+static_path <- file.path(params$base_dir, params$static_path)
+
+lock_path <- file.path(params$base_dir, ".provenance-lock.fst")
+min_path <- file.path(params$base_dir, "Eprov.fst")
+
+nb_eval_call_sites <- function(dataset) {
+  dataset %>% pull(src_ref) %>% n_distinct()
+}
+
+```
+
+# Loading datafiles
+
+```{r loading_fst}
+tibble(package = read_lines(corpus_path)) -> C_raw
+read_csv(static_path) %>% semi_join(C_raw, by = "package") -> P
+
+rebuild <- TRUE
+
+E_prov <- NULL
+
+if (file.exists(lock_path)) {
+  saved <- read.fst(lock_path)[[1,1]]
+  if (saved == file.size(calls_path)) {
+    read_fst(min_path) %>% as_tibble() -> E_prov
+    rebuild <- FALSE
+  }
+}
+
+if(params$force_rebuild || rebuild) {
+  read_fst(calls_path) %>% as_tibble() -> E_raw
+  
+  E_raw <- E_raw %>% mutate(envir_expression = if_else(envir_type == "NULL" & is.na(envir_expression), "NULL", envir_expression))
+  
+  E_raw %>% select(
+    run_package = package, #      The package which was run to trigger the eval
+    ev_variant = eval_function, # Which eval variant was called
+    duplicates = nb_ev_calls, #   Number of identical eval calls (weight)
+    src_ref = eval_call_srcref, # Source ref for the eval call site
+    file, #                       Script file name (name of this run)
+    ev_package = eval_source, #   Package of the call site
+    type = expr_resolved_type_tag, #   Argument type
+    ev_call = eval_call_expression,
+    ev_expr = expr_expression,
+    caller_expression,
+    match_call = expr_match_call,
+    parsed = expr_parsed_expression,
+  ) -> E_prov
+  
+  
+  E_prov %>% write_fst(min_path)
+  sz <- file.size(calls_path) %>% as_tibble()
+  write.fst(sz, lock_path)
+}
+
+C_raw -> C
+corpus_size <- nrow(C)
+```
+
+# Description of the data files
+
+```{r packages}
+nb_eval_calls <- count(E_prov, wt = duplicates)
+
+nb_call_sites <- E_prov %>% pull(src_ref) %>% n_distinct()
+```
+
+
+There are `r nb_eval_calls` eval calls and `r nb_call_sites` eval call sites in the dataset.
+
+# Classification of provenance
+
+## Expression types
+
+```{r}
+expressions <- E_prov %>% filter(type == "expression")
+
+parsed_exprs <- expressions %>% filter(!is.na(parsed))
+
+not_parsed_exprs <- expressions %>% anti_join(parsed_exprs)
+
+nb_parsed_exprs_sites <- parsed_exprs %>% pull(src_ref) %>% n_distinct()
+
+nb_not_parsed_exprs_sites <- not_parsed_exprs %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+    r("nb parse exprs sites", nb_parsed_exprs_sites),
+    r("parse exprs site percent", ratio(nb_parsed_exprs_sites, nb_call_sites)),
+    r("nb not parse exprs sites", nb_not_parsed_exprs_sites),
+    r("not parse exprs site percent", ratio(nb_not_parsed_exprs_sites, nb_call_sites)),
+)
+```
+
+
+## Language type
+
+
+```{r}
+languages <- E_prov %>% filter(type == "language")
+
+match_call_exprs <- E_prov %>% filter(!is.na(match_call))
+
+str2lang_exprs <- languages %>% filter(!is.na(parsed))
+
+# Substitute, quote, bquote etc...
+other_langs <- languages %>% anti_join(match_call_exprs) %>% anti_join(str2lang_exprs)
+
+nb_match_call_exprs_sites <- match_call_exprs %>% pull(src_ref) %>% n_distinct()
+nb_str2lang_sites <- str2lang_exprs %>% pull(src_ref) %>% n_distinct()
+nb_other_langs_sites <- other_langs %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+    r("nb match call exprs sites", nb_match_call_exprs_sites),
+    r("match call exprs site percent", ratio(nb_match_call_exprs_sites, nb_call_sites)),
+    r("nb strlang sites", nb_str2lang_sites),
+    r("strlang site percent", ratio(nb_str2lang_sites, nb_call_sites)),
+    r("nb other langs sites", nb_other_langs_sites),
+    r("other langs site percent", ratio(nb_other_langs_sites, nb_call_sites))
+)
+```
+
+
+## Bytecode
+
+We disable bytecode optimization so if we see a bytecode type, it means that `comp`has been explicitly called to compile to bytecode.
+
+```{r}
+bytecode_exprs <- E_prov %>% filter(type == "bytecode")
+
+nb_bytecode_sites <- bytecode_exprs %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+    r("nb bytecode sites", nb_bytecode_sites),
+    r("bytecode site percent", ratio(nb_bytecode_sites, nb_call_sites))
+)
+```
+
+## Sites wwith less signficant provenance
+
+```{r}
+unknown_prov <- E_prov %>% anti_join(expressions) %>% anti_join(languages) %>% anti_join(bytecode_exprs)
+
+nb_unknown_prov_sites <- unknown_prov %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+    r("nb unknown prov sites", nb_unknown_prov_sites),
+    r("unknown prov site percent", ratio(nb_unknown_prov_sites, nb_call_sites))
+)
+```
+
+
+
+# More details for `parse` and expressions
+
+```{r}
+parse_func_exprs <- parsed_exprs %>% filter(str_detect(parsed, fixed("parse")))
+str2expression_exprs <- parsed_exprs %>% filter(str_detect(parsed, fixed("str2expression")))
+
+nb_parse_func_sites <- parse_func_exprs %>% pull(src_ref) %>% n_distinct()
+nb_str2expression_sites <- str2expression_exprs %>% pull(src_ref) %>% n_distinct()
+
+# File argument (but ignore the srcfile one)
+
+from_file_exprs <- parse_func_exprs %>% filter(str_detect(parsed, "\\bfile\\b"))
+nb_from_file_sites <- from_file_exprs %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+    r("nb parse func sites", nb_parse_func_sites),
+    r("parse func site percent", ratio(nb_parse_func_sites, nb_parsed_exprs_sites)),
+    r("nb strexpression sites", nb_str2expression_sites),
+    r("strexpression site percent", ratio(nb_str2expression_sites, nb_parsed_exprs_sites)),
+    r("nb parse from file sites", nb_from_file_sites),
+    r("parse from file site percent", ratio(nb_from_file_sites, nb_parse_func_sites))
+)
+```
+
+
+# Final classification <a name = "table-provenances" />
+
+```{r}
+string_exprs <- E_prov %>% filter(!is.na(parsed))
+nb_string_expr_sites <- n_distinct(string_exprs$src_ref)
+
+constructed_exprs <- bind_rows(not_parsed_exprs, other_langs) %>% anti_join(match_call_exprs)
+nb_constructed_expr_sites <- n_distinct(constructed_exprs$src_ref)
+
+
+unknown_prov_exprs <- E_prov %>% anti_join(string_exprs) %>% anti_join(constructed_exprs) %>% anti_join(match_call_exprs)
+nb_unknown_prov_exprs_sites <- n_distinct(unknown_prov_exprs$src_ref)
+
+overview_table(
+  r("nb constructed sites", nb_constructed_expr_sites),
+  r("nb constructed site percent", ratio(nb_constructed_expr_sites, nb_call_sites)),
+  r("nb string sites", nb_string_expr_sites),
+  r("nb string site percent", ratio(nb_string_expr_sites, nb_call_sites)),
+  r("nb unknown sites", nb_unknown_prov_exprs_sites),
+  r("nb unknown site percent", ratio(nb_unknown_prov_exprs_sites, nb_call_sites)),
+) 
+# last category is match.call but we have it elsewhere
+```
+
+
+```{r}
+duration <- difftime(Sys.time(), now)
+```
+
+Notebook execution was `r duration` `r units(duration)`.

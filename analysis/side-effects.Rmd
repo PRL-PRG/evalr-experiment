@@ -1,0 +1,534 @@
+---
+title: "Side-effects"
+output:
+    html_document:
+        code_folding: "hide"
+        gallery: false
+        toc: true
+        toc_depth: 3
+        toc_float: true
+        df_print: paged
+date: "`r Sys.Date()`"
+editor_options: 
+  chunk_output_type: console
+params:
+  base_dir: ../run/preprocess
+  output_dir: output
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(DT)
+library(digest)
+library(fs)
+library(fst)
+library(purrr)
+library(tidyverse)
+library(viridis)
+library(xtable)
+
+source("inc/latextags.R")
+source("inc/functions.R")
+source("inc/paths.R")
+
+create_tags(path(TAGS_DIR, "side-effects.tex"), prefix = "SE", default = TRUE)
+```
+
+## Data loading
+
+```{r load data}
+SE_all <- read_fst(PACKAGE_SIDE_EFFECTS_FILE) %>% 
+  as_tibble %>%
+  filter(transitive==0)
+```
+
+Filter out missing calls.
+
+```{r missing calls}
+SE_missing_eval_call <- filter(SE_all, is.na(eval_function))
+SE_all <- filter(SE_all, !is.na(eval_function))
+```
+
+Fix known missing eval source code references.
+
+```{r deal with empty srcrefs}
+SE <- mutate(SE_all, eval_call_srcref=case_when(
+  eval_call_srcref == "???" & expr_expression == "handler$expr" & envir_expression == "handler$envir" ~ "::withr::execute_handlers::1",
+  eval_call_srcref == "???" & expr_expression == "quote({\n    old.options <- options(dplyr.summarise.inform = FALSE)\n    o" ~ "::dplyr::tally::1",
+  eval_call_srcref == "???" & expr_expression == "quote({\n    na.action <- attr(mf, \"na.action\")\n    why_omit <- attr(na.a" ~ "::estimatr::cleam_mode_data::1",
+  TRUE ~ eval_call_srcref
+))
+
+SE_missing_sites <- filter(SE, eval_call_srcref=="???")
+SE <- filter(SE, eval_call_srcref!="???")
+```
+
+Remove the side effects that happen to `.Random.seed` unless it comes from the actual call to `set.seed`.
+
+```{r remove Random.seed}
+SE_random_seed <- filter(SE, variable == ".Random.seed", !str_detect(expr_resolved, "set.seed"))
+SE <- filter(SE, variable != ".Random.seed" | str_detect(expr_resolved, "set.seed"))
+```
+
+Remove side effects from R internal use of eval.
+
+```{r remove internal}
+SE_internal <- filter(SE, str_starts(source, fixed("internal:")))
+SE <- filter(SE, !str_starts(source, fixed("internal:")))
+```
+
+Load eval call sites.
+
+```{r load static evals}
+ES <- read_csv(PACKAGE_EVALS_STATIC_FILE) %>% rename(eval_call_srcref=srcref)
+```
+
+Load summarized eval calls.
+
+```{r load summarize data}
+S <- read_fst(PACKAGE_SUM_CALLS_FILE) %>% as_tibble
+```
+
+Load corpus details.
+
+```{r}
+CRAN <- read_fst(PACKAGE_CORPUS_FILE) %>% as_tibble
+PKG <- filter(CRAN, in_corpus) 
+```
+
+Normalize callers based on the synthesized eval call site source reference.
+
+```{r}
+SE <- mutate(
+  SE,
+  caller=str_replace(eval_call_srcref, "::(.*)::(.*)::.*", "\\1::\\2")
+)
+
+S <- mutate(
+  S,
+  caller=str_replace(eval_call_srcref, "::(.*)::(.*)::.*", "\\1::\\2"),
+  caller_package=str_replace(eval_call_srcref, "::(.*)::.*::.*", "\\1")
+)
+```
+
+## Overview
+
+The following computes the overall information about side effects done in eval calls.
+
+```{r}
+S_calls <- sum(S$nb_ev_calls)
+S_sites <- count(S, eval_call_srcref)
+S_pkgs <- count(S, eval_source)
+S_funs <- count(S, caller)
+  
+SE_all_N <- sum(SE_all$N)
+SE_all_sites <- count(SE_all, eval_call_srcref)
+SE_all_calls <- count(SE_all, cid)
+
+SE_internal_N <- sum(SE_internal$N)
+SE_internal_sites <- count(SE_internal, eval_call_srcref)
+
+SE_random_seed_N <- sum(SE_random_seed$N)
+SE_random_seed_sites <- count(SE_random_seed, eval_call_srcref)
+
+SE_N <- sum(SE$N)
+SE_calls <- count(SE, cid)
+SE_sites <- count(SE, eval_call_srcref)
+SE_funs <- count(SE, caller)
+SE_pkgs <- count(SE, caller_package)
+SE_missing_N <- sum(SE_missing_sites$N)
+```
+
+```{r}
+overview_table(
+  r("All", SE_all_N),
+  r("All calls", SE_all_calls),
+  r("All sites", SE_all_sites),
+  
+  r("Internal", SE_internal_N),
+  r("Internal ratio", ratio(SE_internal_N, SE_all_N)),
+  
+  r("Internal sites", SE_internal_sites),
+  r("Internal sites ratio", ratio(SE_internal_sites, SE_all_sites)),
+  
+  r("Random seed", SE_random_seed_N),
+  r("Random seed ratio", ratio(SE_random_seed_N, SE_all_N)),
+  
+  r("Random seed sites", SE_random_seed_sites),
+  r("Random seed sites ratio", ratio(count(SE_random_seed, eval_call_srcref), SE_all_sites)),
+  
+  r("Missing SE sites", SE_missing_N),
+  r("Missing SE sites ratio", ratio(SE_missing_N, SE_N)),
+  
+  r("User", SE_N),
+  r("User ratio", ratio(SE_N, SE_all_N)),
+
+  r("User calls", SE_calls),
+  r("User calls ratio", ratio(SE_calls, SE_all_calls)),
+  r("User calls to all ratio", ratio(SE_calls, S_calls)),
+  
+  r("User sites", SE_sites),
+  r("User sites ratio", ratio(SE_sites, SE_all_sites)),
+  r("User sites to all ratio", ratio(SE_sites, S_sites)),
+  
+  r("User functions", SE_funs),
+  r("User functions to all ratio", ratio(SE_funs, S_funs)),
+  r("User packages", SE_pkgs),
+  r("User packages to all ratio", ratio(SE_pkgs, S_pkgs))
+)
+```
+
+## Classification
+
+The following classifies the side effects:
+
+```{r functions}
+SE <- mutate(
+  SE, 
+  class=case_when(
+    source == str_c("call:", caller_function)           ~ "Local",
+    str_starts(source, fixed("call:"))                  ~ "Function",
+    str_detect(source, "^R6:.*R6.*") | source=="???S4"  ~ "Object",
+    source == "pkg:global"                              ~ "Global",
+    str_starts(source, fixed("pkg:"))                   ~ "Package",
+    TRUE                                                ~ "Synthetic"
+  )
+)
+```
+
+```{r}
+sites_classes <- 
+  SE %>%
+  group_by(eval_call_srcref) %>%
+  summarise(n_class=n_distinct(class), classes=str_c(sort(unique(class)), collapse=", "))
+
+cs_count(sites_classes, n_class)
+cs_count(sites_classes, classes)
+cs_count(SE, class)
+```
+
+```{r}
+funs <- cs_count(SE, caller)
+```
+
+```{r}
+sites_envir <- 
+  SE %>%
+  group_by(eval_call_srcref) %>% 
+  summarize(
+    in_envir=case_when(
+      all(!in_envir) ~ 0,
+      all(in_envir)  ~ 1,
+      TRUE ~ 2
+    )
+  ) %>% 
+  ungroup()
+```
+
+```{r}
+sites_not_in_envir <- filter(sites_envir, in_envir==0)
+sites_in_envir <- filter(sites_envir, in_envir==1)
+sites_both_envir <- filter(sites_envir, in_envir==2)
+
+overview_table(
+  r("Funs nighty", filter(funs, cp <= 90)),
+  r("Funs ten", filter(funs, cp > 90)),
+  r("Sites not in envir", sites_not_in_envir),
+  r("Sites not in envir ratio", ratio(sites_not_in_envir, sites_envir)),
+  r("Sites in envir", sites_in_envir),
+  r("Sites in envir ratio", ratio(sites_in_envir, sites_envir)),
+  r("Sites both envir", sites_both_envir),
+  r("Sites both envir ratio", ratio(sites_both_envir, sites_envir))
+)
+```
+
+```{r}
+sum_sites_classes <- 
+  sites_classes %>%
+  mutate(
+    classes=if_else(str_detect(classes, "[,;]"), "multiple", classes)
+  ) %>%
+  cs_count(classes) %>%
+  mutate(
+    p=fmt(p, suffix="\\%", digit=0),
+    o=if_else(str_starts(classes, fixed("\\")), 0L, n)
+  ) %>% 
+  arrange(desc(o)) %>%
+  select(-cp, -o)
+```
+
+```{r}
+sites_class_n <- cs_count(sites_classes, n_class)
+
+overview_table(
+  r("Sites in one class", percent(filter(sites_class_n, n_class==1)$p/100))
+)
+```
+
+## Function classification
+
+```{r}
+funs_srcrefs <- 
+  left_join(
+    mutate(ES, fun=str_c(package, "::", fun_name)), 
+    transmute(count(S, eval_call_srcref), eval_call_srcref, hit=1), 
+    by="eval_call_srcref"
+  ) %>%
+  mutate(hit=replace_na(hit, 0)) %>%
+  select(-args, -call_fun_name) %>%
+  left_join(
+    select(sites_classes, eval_call_srcref, classes),
+    by="eval_call_srcref"
+  )
+
+funs_cov <-
+  funs_srcrefs %>% 
+  group_by(fun) %>%
+  summarize(cov=sum(hit)/n())
+
+funs_classes <- 
+  semi_join(funs_srcrefs, funs_cov, by="fun") %>%
+  group_by(fun) %>%
+  summarize(
+    cov=sum(hit)/n(),
+    classes=str_c(unique(classes[!is.na(classes)]), collapse=";")
+  )
+
+cs_count(funs_classes, cov)
+cs_count(funs_classes, classes)
+```
+
+```{r}
+sum_funs_classes <-
+  funs_classes %>%
+    filter(cov==1, classes != "") %>%
+    mutate(
+      classes=if_else(str_detect(classes, "[,;]"), "multiple", classes)
+    ) %>%
+    cs_count(classes) %>%
+    mutate(
+      p=fmt(p, suffix="\\%", digit=0),
+      o=if_else(str_starts(classes, fixed("\\")), 0L, n)
+    ) %>% 
+    arrange(desc(o)) %>%
+    select(-cp, -o)
+```
+
+### Target environments for side-effects <a name="table_se_target_envs" />
+
+```{r}
+table_se_target_envs <- 
+  left_join(
+    rename(sum_sites_classes, site_n=n, site_p=p),
+    rename(sum_funs_classes, fun_n=n, fun_p=p)
+  ) %>%
+    mutate(
+      o=if_else(classes=="multiple", 0L, site_n),
+      classes=if_else(classes=="multiple", "\\emph{multiple}", classes),
+      fun_n=replace_na(fun_n, "0"),
+      fun_p=replace_na(fun_p, "0\\%"),
+    ) %>%
+    arrange(desc(o)) %>%
+    select(-o)
+```
+
+Table:
+
+```{r}
+datatable(table_se_target_envs)
+```
+
+Saving to tex:
+
+```{r}
+table_se_target_envs %>%
+  xtable(
+    align="llrrrr"
+  ) %>%
+  print(
+    file=file.path(TAGS_DIR, "table-se-target-envs.tex"),
+    comment=FALSE, 
+    include.colnames=FALSE,
+    include.rownames=FALSE,
+    only.contents=TRUE,
+    sanitize.text.function=identity,
+    timestamp=FALSE
+  )
+```
+
+### Types of eval side-effects <a name="table_se_types" />
+
+```{r}
+event <- cs_count(SE, event, wt=N)
+event_calls <- cs_count(SE, event)
+event_site <- cs_count(SE, eval_call_srcref, event) %>% cs_count(event)
+
+table_se_types <- left_join(
+    select(event, event, n_event=n, p_event=p),
+    select(event_calls, event, n_call=n, p_call=p),
+    by="event"
+  ) %>%
+    left_join(
+      select(event_site, event, n_site=n, p_site=p),
+      by="event"
+    ) %>% 
+    mutate(event=case_when(
+      event=="def" ~ "definition",
+      event=="asn" ~ "update",
+      event=="rvl" ~ "removal"
+    )) %>%
+    mutate_if(is.double, ~fmt(., suffix="%", digit=0)) %>%
+    mutate_if(is.integer, ~fmt(.))
+```
+
+Table:
+
+```{r}
+datatable(table_se_types)
+```
+
+Saving to tex:
+
+```{r}
+table_se_types %>%
+  xtable(
+    align="llrrrrrr"
+  ) %>%
+  print(
+    file=file.path(TAGS_DIR, "table-se-types.tex"),
+    comment=FALSE, 
+    include.colnames=FALSE,
+    include.rownames=FALSE,
+    only.contents=TRUE,
+    timestamp=FALSE
+  )
+```
+
+### Events
+
+```{r}
+event_rvl_class <- filter(SE, event=="rvl") %>% cs_count(class)
+
+overview_table(
+  r("event rem from synthetic", percent(filter(event_rvl_class, class=="Synthetic")$p/100)),
+  r("event rem from function", percent(filter(event_rvl_class, class=="Function")$p/100)),
+  r("event rem from local", percent(filter(event_rvl_class, class=="Local")$p/100))
+)
+```
+
+## SEXP types analysis
+
+```{r}
+SEXP_TYPES <- tribble(
+  ~type, ~type_name,
+  0, "NILSXP",
+  1, "SYMSXP",
+  2, "LISTSXP",
+  3, "CLOSXP",
+  4, "ENVSXP",
+  5, "PROMSXP",
+  6, "LANGSXP",
+  7, "SPECIALSXP",
+  8, "BUILTINSXP",
+  9, "CHARSXP",
+  10, "LGLSXP",
+  13, "INTSXP",
+  14, "REALSXP",
+  15, "CPLXSXP",
+  16, "STRSXP",
+  17, "DOTSXP",
+  18, "ANYSXP",
+  19, "VECSXP",
+  20, "EXPRSXP",
+  21, "BCODESXP",
+  22, "EXTPTRSXP",
+  23, "WEAKREFSXP",
+  24, "RAWSXP",
+  25, "S4SXP",
+  30, "NEWSXP",
+  31, "FREESXP",
+  99, "FUNSXP"
+) %>%
+  mutate(
+    type_name=str_replace(type_name, "SXP", "")
+  )
+```
+
+
+```{r}
+SE1 <- left_join(SE, SEXP_TYPES, by="type") %>%
+  select(-type) %>%
+  rename(type=type_name) %>%
+  filter(event != "rvl") %>%
+  mutate(
+    stype=case_when(
+      type == "CLO" ~ "Closure",
+      type %in% c("STR","INT","LGL","RAW","REAL", "CPLX") ~ "Basic",
+      type %in% c("ENV") ~ "Environment",
+      type %in% c("VEC") ~ "List",
+      type %in% c("SYM","LANG","EXPR") ~ "Expression",
+      type %in% c("NIL") ~ "NULL",
+      type %in% c("S4") ~ "S4",
+      TRUE ~ "Other"
+    )
+  )
+
+cs_count(SE1, stype)
+
+class_type <- 
+  SE1 %>%
+  filter(event=="asn") %>%
+  count(eval_call_srcref, stype, class, wt=N) %>% 
+  count(class, stype)
+
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+#class_type %>%
+class_types_sites <-
+  SE1 %>%
+  filter(event=="asn") %>%
+  cs_count(eval_call_srcref, class, stype, wt=N) %>% cs_count(class, stype)
+
+class_types_sites %>%
+  ggplot(aes(x=class, y=n, fill=stype)) + 
+  geom_bar(stat="identity", position="fill", alpha=0.9) +
+  scale_y_continuous(labels=scales::percent) +
+#  scale_fill_viridis(discrete = TRUE, option="E") +
+  scale_fill_manual(values = cbp1) +
+  theme(text = element_text(size=19),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = .5),
+        axis.title.y = element_blank(),
+        aspect.ratio = 4/3,
+        panel.grid.minor.x = element_blank(),
+        legend.position="top") +
+  labs(fill="")
+
+ggsave(path(PLOT_DIR, "se-types.pdf"))
+```
+
+```{r}
+types_sites <- 
+  SE1 %>%
+  filter(event=="asn") %>%
+  cs_count(eval_call_srcref, class, stype, wt=N) %>% cs_count(stype)
+  
+closure_sites <- 
+  SE1 %>%
+  filter(event=="asn") %>%
+  cs_count(eval_call_srcref, class, stype, wt=N) %>%
+  filter(stype=="Closure") %>% 
+  cs_count(class)
+
+overview_table(
+  r("Basic type ratio", percent(filter(types_sites, stype == "Basic")$p/100)),
+  r("List type ratio", percent(filter(types_sites, stype == "List")$p/100)),
+  r("Closure type ratio", percent(filter(types_sites, stype == "Closure")$p/100)),
+  r("Closure type", filter(types_sites, stype == "Closure")$n),
+  r("Closure type local", filter(closure_sites, class == "Local")$n)
+)
+```
+
+

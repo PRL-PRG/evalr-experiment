@@ -1,0 +1,602 @@
+---
+title: "Usage metrics"
+author: "Pierre Donat-Bouillud"
+output:
+    html_document:
+        code_folding: "hide"
+        gallery: false
+        toc: true
+        toc_depth: 3
+        toc_float: true
+        df_print: paged
+date: "`r Sys.Date()`"
+editor_options: 
+  chunk_output_type: console
+params:
+  base_dir: ../run/preprocess/package
+  output_dir: output
+  calls_path: summarized.fst
+  corpus_path: corpus.txt
+  static_path: evals-static.csv
+  force_rebuild: TRUE
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(fst)
+library(fs)
+library(DT)
+library(scales)
+
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) { # record the current time before each chunk
+      now <<- Sys.time()
+    } else { # calculate the time difference after a chunk
+      res <- difftime(Sys.time(), now)
+      # return a character string to show the time
+      paste("Time for this code chunk to run:", round(res, 2), units(res))
+    }
+  }
+}))
+now <- Sys.time()
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.retina = 2,
+  fig.width = 10,
+  cache.lazy = FALSE,
+  time_it = TRUE
+)
+
+source("inc/paths.R")
+source("inc/latextags.R")
+source("inc/functions.R")
+theme_set(theme_minimal())
+
+dataset_name <- basename(params$base_dir)
+create_tags(path(TAGS_DIR, paste0(dataset_name, "_usage_metrics.tex")), prefix = dataset_name, default = TRUE)
+#create_tags(path(TAGS_DIR, "usage_metrics.tex"), default = TRUE)
+
+
+calls_path <- file.path(params$base_dir, params$calls_path)
+corpus_path <- file.path(params$base_dir, params$corpus_path)
+static_path <- file.path(params$base_dir, params$static_path)
+
+lock_path <- file.path(params$base_dir, ".lock.fst")
+min_path <- file.path(params$base_dir, "E.fst")
+```
+
+# Read
+
+Read in the summarized calls data (`E_raw`) and the file that describes
+which package belong to our corpus (`C_raw`). For conciseness, `E` is
+the input data set with only the columns that we use.
+
+```{r read, message=TRUE, include=F}
+tibble(package = read_lines(corpus_path)) -> C_raw
+
+# We do the semi join to only keep the file that are loadable
+read_csv(static_path) %>% semi_join(C_raw, by = "package") -> P
+  
+
+rebuild <- TRUE
+# We only read the file if we don't have our summarized file on disk.
+# To force reading, set the force_rebuild parameter to true.
+if (file.exists(lock_path)) {
+  saved <- read.fst(lock_path)[[1,1]]
+  if (saved == file.size(calls_path)) {
+    read.fst(min_path) %>% as_tibble() -> E
+    rebuild <- FALSE
+  }
+}
+if (params$force_rebuild | rebuild) {
+  read_fst(calls_path) %>% as_tibble() -> E_raw
+  
+  E_raw %>% select(
+    run_package = package, #      The package which was run to trigger the eval
+    ev_variant = eval_function, # Which eval variant was called
+    duplicates = nb_ev_calls, #   Number of identical eval calls (weight)
+    src_ref = eval_call_srcref, # Source ref for the eval call site
+    file, #                       Script file name (name of this run)
+    ev_package = eval_source, #   Package of the call site
+    arg_size = expr_resolved_length, #   Size in characters of argument 
+    ast_nodes = expr_resolved_nodes, #   Size in AST Nodes
+    func = caller_function,
+    type = expr_resolved_type_tag,   #   Argument type
+    opcodes = interp_eval #  Count of the AST nodes traversed by the
+  ) %>% #                                interpreter during eval (non-recursive).
+   mutate(across(where(is_character),as_factor)) -> E 
+  write.fst(E, min_path)
+  sz <- file.size(calls_path) %>% as_tibble()
+  write.fst(sz, lock_path)
+}
+
+
+
+C_raw -> C
+corpus_size <- nrow(C)
+
+
+nb_runs <- E %>%
+  pull(file) %>%
+  n_distinct()
+
+overview_table(
+  r("Corpus", corpus_size),
+  r("NbRuns", nb_runs)
+)
+```
+
+
+The two data sets are `E` and `C` for conciseness.  `C` is only used here to 
+compute the corpus size. `E` is used throughout. Recall that `E_raw` has the 
+source data with all columns. `P` corresponds to static information about the
+call sites.
+
+The size of our corpus is `r corpus_size` packages.
+
+#  Variants
+
+The data set has `r nrow(E)` distinct calls to the `eval` and its variants. 
+There are `r length(unique(E$ev_package))` corpus packages with `eval` calls
+(note that we may not trigger all `eval`s in a package due to spotty coverage).
+
+```{r variants, include=FALSE}
+nb_calls <- E %>%
+  count(wt = duplicates) %>%
+  .$n
+eval_calls <- E %>%
+  filter(ev_variant == "eval") %>%
+  count(wt = duplicates) %>%
+  .$n
+evalq_calls <- E %>%
+  filter(ev_variant == "evalq") %>%
+  count(wt = duplicates) %>%
+  .$n
+eval.parent_calls <- E %>%
+  filter(ev_variant == "eval.parent") %>%
+  count(wt = duplicates) %>%
+  .$n
+local_calls <- E %>%
+  filter(ev_variant == "local") %>%
+  count(wt = duplicates) %>%
+  .$n
+
+overview_table(
+  r("Allcalls", nb_calls),
+  r("Evals", eval_calls),
+  r("Evalqs", evalq_calls),
+  r("Eparents", eval.parent_calls),
+  r("Locals", local_calls),
+  r("Triggeredpkgs", length(unique(E$ev_package))),
+  r("EvalsRatio", ratio(eval_calls, nb_calls)),
+  r("EvalqsRatio", ratio(evalq_calls, nb_calls)),
+  r("EparentsRatio", ratio(eval.parent_calls, nb_calls)),
+  r("LocalsRatio", ratio(local_calls, nb_calls)),
+) -> TBL
+``` 
+
+We recorded `r nb_calls` to eval, out of these, there were `r evalq_calls`
+(`r fmt(ratio(evalq_calls,nb_calls))`) calls to `evalq`, `r eval.parent_calls` 
+(`r fmt(ratio(eval.parent_calls,nb_calls))`) calls to `eval.parent`,  and
+`r local_calls` (`r fmt(ratio(local_calls,nb_calls))`) calls to `local`. 
+
+`r TBL`
+
+# Exercised vs. Static
+
+Here we compute the number of static call sites to compare it with
+the number of call sites with triggered dynamically. The former is larger
+than the latter because code coverage is not perfect.
+
+```{r exercised-vs-static, include=FALSE}
+ stat_evl <- P %>% filter(call_fun_name == "eval")        %>% nrow()
+stat_evq <- P %>% filter(call_fun_name == "evalq")       %>% nrow()
+stat_evp <- P %>% filter(call_fun_name == "eval.parent") %>% nrow()
+stat_loc <- P %>% filter(call_fun_name == "local")       %>% nrow()
+
+sites_per_variant <- E %>% # src_ref indicates where the call originates from.
+  group_by(ev_variant) %>%
+  summarize(n = n_distinct(src_ref)) # This the number of distinct sites
+
+tmp <- sites_per_variant %>% filter(ev_variant == "eval")
+dyn_evl <- if (nrow(tmp) == 0) { 0 } else { tmp$n }
+tmp <- sites_per_variant %>% filter(ev_variant == "evalq")
+dyn_evq <- if (nrow(tmp) == 0) { 0 } else { tmp$n }
+tmp <- sites_per_variant %>% filter(ev_variant == "eval.parent")
+dyn_evp <- if (nrow(tmp) == 0) { 0 } else { tmp$n }
+tmp <- sites_per_variant %>% filter(ev_variant == "local")
+dyn_loc <- if (nrow(tmp) == 0) { 0 } else { tmp$n }
+
+overview_table(
+  r("Staticeval", stat_evl),
+  r("Staticevalq", stat_evq),
+  r("Staticevalparent", stat_evp),
+  r("Staticlocal", stat_loc),
+  r("Triggeredeval", dyn_evl),
+  r("Triggeredevalq", dyn_evq),
+  r("Triggeredevalparent", dyn_evp),
+  r("Triggeredlocal", dyn_loc),
+  r("Triggeredevalpct", ratio(dyn_evl, stat_evl)),
+  r("Triggeredevalqpct", ratio(dyn_evq, stat_evq)),
+  r("Triggeredevalparentpct", ratio(dyn_evp, stat_evp)),
+  r("Triggeredlocalpct", ratio(dyn_loc, stat_loc))
+) -> TBL
+```
+
+<a name="figure-5" />
+
+`r TBL`
+
+# Ev-dist 
+
+We compute the frequency of evals by package. This shows that some packages
+hardly use eval while other use it intensely. The numbers are "for all runs",
+this means that a popular package may be triggered by more runs and thus
+have higher frequencies. We will later control for this by looking at individual 
+call sites.
+
+```{r ev-dist, include=FALSE}
+
+# The calls per package
+pack_calls <- E %>% count(ev_package, wt = duplicates, sort = TRUE)
+# Create bins at every power of ten
+bins <- cut(pack_calls$n, breaks = c(0, 10^seq(1, 8)), include.lowest = TRUE)
+sum <- summary(bins)
+# Packages with more than 1K calls
+Kcalls <- pack_calls %>%
+  filter(n > 1000) %>%
+  nrow()
+
+# The number of runs per package
+runs <- E %>%
+  group_by(ev_package) %>%
+  summarise(nb_runs = n_distinct(file))
+
+# Number of eval calls per package
+ecpp <- pack_calls %>% left_join(runs, by = "ev_package")
+stopifnot(nrow(filter(ecpp, n == 0)) == 0)
+# The package with the most calls
+max_calls <- ecpp %>% filter(n == max(n))
+
+overview_table(
+  r("bina", sum[[1]]),
+  r("binb", sum[[2]]),
+  r("binc", sum[[3]]),
+  r("bind", sum[[4]]),
+  r("bine", sum[[5]]),
+  r("binf", sum[[6]]),
+  r("bing", sum[[7]]),
+  r("binh", sum[[8]]),
+  r("Fewcalls", sum[[1]] + sum[[2]]),
+  r("Manycalls", Kcalls),
+  r("Maxcalls", max_calls$n),
+  r("Maxcallspack", max_calls$ev_package)
+) -> TBL
+```
+
+The distribution of eval calls, each bin represents a power of 10, the number 
+in the bin is the count of packages.
+
+<a name="figure-4" />
+
+`r TBL`
+
+# Triggered sites
+
+```{r triggered-sites, include=F}
+stopifnot(sum(is.na(E$src_ref)) == 0) # No NAs in scr_ref!
+# Number of eval call sites
+sites <- E %>% # src_ref indicates where the call originates from.
+  pull(src_ref) %>%
+  n_distinct() # This the number of distinct sites
+# Number of call sites per package
+sites_per_package <- E %>%
+  count(ev_package, src_ref) %>%
+  count(ev_package) # All packages have at least one site!
+
+static_sites <- nrow(P)
+
+static_call_sites_per_package <- P %>%
+  count(package, sort = TRUE)
+
+static_at_least_one_call_site <- static_call_sites_per_package %>%
+  filter(n >= 1)
+
+overview_table(
+  r("Sites", sites),
+  r("Staticsites", static_sites),
+  r("Sitespercent", ratio(sites, static_sites)),
+  r("Staticatleastonecallsite", nrow(static_at_least_one_call_site))
+)
+```
+
+
+`r TBL`
+
+
+# Numbers of calls to eval
+
+This is the number of eval calls which have a call site in each package,
+divided by the number of runs for the package.
+
+We first compute an approximation of the number of runs per package.
+```{r runs-per-package, include=FALSE}
+runs_package <- E %>%
+  group_by(ev_package) %>%
+  summarise(nb_runs = n_distinct(file)) %>%
+  arrange(desc(nb_runs))
+```
+
+What are the packages with the most runs?
+
+```{r show_run-per-package}
+runs_package %>% datatable()
+```
+
+
+```{r eval-calls-violin-plot}
+sites_per_package %>%
+  ggplot(aes(x = "", y = n, fill = ""), na.rm = TRUE) +
+  geom_violin(trim = FALSE, width = 1.7) +
+  labs(y = "Eval calls per package") +
+  theme(legend.position = "none") 
+
+ggsave_prefix("eval_calls_per_packages.pdf")
+```
+
+
+
+# Amount of code 
+
+How much code is loaded by eval, we look at argument sizes.
+
+```{r amout-of-code, include=F}
+
+weighted.median <- function(x, w, na.rm = FALSE) {
+  if (na.rm) {
+    na.omit(x)
+  }
+  w <- w[order(x)]
+  x <- x[order(x)]
+  prob <- cumsum(w) / sum(w)
+  ps <- which(abs(prob - .5) == min(abs(prob - .5)))
+  return(x[ps])
+}
+
+med_size <- weighted.median(E$ast_nodes, w = E$duplicates, na.rm = TRUE)
+max_size <- max(E$ast_nodes, na.rm = TRUE)
+average_size <- weighted.mean(E$ast_nodes, na.rm = TRUE, w = E$duplicates)
+
+sizes_prop <- E %>%
+  count(ast_nodes, wt = duplicates) %>%
+  mutate(proportion = n / sum(n)) %>%
+  arrange(ast_nodes) %>%
+  mutate(cumulative = cumsum(proportion))
+
+many <- sizes_prop %>%
+  filter(cumulative >= 0.95) %>%
+  .[1, ]
+
+overview_table(
+  r("Medianszeval", med_size),
+  r("Maxszeval", max_size),
+  r("Avgszeval", average_size),
+  r("Szninefive", many$ast_nodes)
+) -> TBL
+```
+
+`r TBL`
+
+```{r echo=FALSE}
+lbl_colour <- rep("black", 11)
+lbl_colour[[4]] <- "transparent"
+E %>%
+  ggplot(aes(x = ast_nodes, weight = duplicates)) +
+  stat_density(aes(y = ..count..), color = "black", fill = "blue", alpha = 0.3) +
+  scale_x_continuous(breaks = c(0, 1, 2, 3, 4, 5, 10, 30, 100, 300, 1000), trans = "log1p", expand = c(0, 0)) +
+  labs(x = "Size (nodes)") +
+  theme(text = element_text(size=17),
+        axis.text.x = element_text(color = lbl_colour)) 
+
+E %>% 
+  filter(ast_nodes < 25) %>%
+  ggplot(aes(x = ast_nodes, weight = duplicates)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "blue", alpha = 0.3) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Nodes", y = "Count") +
+  theme(text = element_text(size=17),  panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(), aspect.ratio = 4/3) 
+
+
+ggsave_prefix("size_loaded_distribution.pdf")
+```
+
+
+
+# Amount of computation
+
+How much work is involved in each eval as measured by the number of opcodes exectued by the interpreter.
+
+```{r amount_computations, include=F}
+tot_events <- E %>%
+  summarise(n = sum(opcodes * duplicates, na.rm = TRUE)) %>%
+  .$n
+max_events <- E %>%
+  summarize(n = max(opcodes, na.rm = TRUE)) %>%
+  .$n
+
+less_50_events <- E %>%
+  filter(opcodes <= 50) %>%
+  count(wt = duplicates) %>%
+  .$n
+
+
+overview_table(
+  r("Events", tot_events),
+  r("Maxevents", max_events),
+  r("Smalleventspct", ratio(less_50_events, nb_calls))
+) -> TBL
+```
+
+`r TBL`
+
+```{r echo=FALSE}
+E %>%
+  filter(opcodes > 50) %>%
+  mutate(x="") %>%
+  ggplot(aes(x = x, y = opcodes), na.rm = TRUE) +
+  geom_violin(trim = FALSE, width = 1, fill = "blue", alpha = 0.3) +
+  scale_y_log10(labels = scales::comma) +
+  labs(y = "", x = "") +
+  theme(legend.position = "none", text = element_text(size=25))
+
+ggsave_prefix("events_per_pack_large.pdf")
+```
+
+
+```{r echo=FALSE}
+E %>%
+  filter(opcodes > 0) %>% # == 0 if from eval.parent, because we do not count eval loops for it
+  filter(opcodes <= 50) %>%
+  mutate(x="") %>%
+  ggplot(aes(x = x, y = opcodes), na.rm = TRUE) +
+  geom_violin(trim = FALSE, width = 1.7, fill = "blue", alpha = 0.3) +
+  labs(y = "Instructions", x = "") +
+  theme(legend.position = "none", text = element_text(size=25)) 
+
+ggsave_prefix("events_per_pack_small.pdf")
+```
+
+
+
+
+# Loops
+
+Here, we try to have an estimation of how often a call site is exercised per 
+run. If it is often, maybe it is a loop!
+
+```{r loops, echo=FALSE}
+# Which call sites where exercised and how many times, per run.
+exercised <- E %>%
+  group_by(file) %>% # group by runs
+  count(src_ref, wt = duplicates) # weigh by duplicates
+
+exercised %>% ggplot(aes(n)) +
+  geom_histogram() +
+  scale_x_log10(labels = scales::comma) +
+  labs(x = "Calls per site per run")
+
+# For each site, how many runs and within each runs how often do we trigger.
+triggered <- E %>%
+  group_by(src_ref) %>%
+  summarize(
+    n_runs = n_distinct(file),
+    n = sum(duplicates),
+    average = n / n_runs
+  ) %>%
+  arrange(desc(average))
+
+# Plot the low trigger counts...
+triggered %>%
+  filter(average < 50) %>%
+  ggplot(aes(x = average)) +
+  geom_histogram(binwidth = 1, fill = "blue", alpha = 0.3, colour = "black") +
+  labs(x = "Average", y = "Count") +
+  theme(text = element_text(size=16), 
+        axis.text = element_text(size=20), 
+        aspect.ratio = 4/3)
+
+ggsave_prefix("calls_per_run_per_call_site.pdf")
+```
+
+
+
+```{r, include = FALSE}
+bins <- cut(triggered$average, breaks = c(0, 50, 100, 250, 500, 1000, 1500, 2000, 3000), include.lowest = TRUE)
+sum <- summary(bins)
+
+overview_table(
+  r("Runbina", sum[[1]]),
+  r("Runbinb", sum[[2]]),
+  r("Runbinc", sum[[3]]),
+  r("Runbind", sum[[4]]),
+  r("Runbine", sum[[5]]),
+  r("Runbinf", sum[[6]]),
+  r("Runbing", sum[[7]]),
+  r("Runbinh", sum[[8]])
+) -> TBL
+```
+
+<a name="normalized-bins-all" />
+
+`r TBL`
+
+# Diversity of arguments
+
+How diverse are the expressions passed to `eval`? We consider the diversity in types in the resolved expression.
+
+```{r type-diversity, echo=FALSE}
+E %>%
+  ggplot(aes(x = fct_rev(fct_infreq(type)), weight=duplicates)) +
+  geom_bar() +
+  coord_flip() +
+  labs(x = "type") 
+
+types <- E %>% count(type, wt=duplicates)
+
+symbs <- types %>% filter(type == "symbol")
+symbs <- if(nrow(symbs) == 0) 0 else symbs$n
+
+languages <- types %>% filter(type == "language") 
+languages <- if(nrow(languages) == 0) 0 else languages$n
+
+expressions <- types %>% filter(type == "expression")
+expressions <- if(nrow(expressions) == 0) 0 else expressions$n
+
+ggplot2_symbs <- E %>% filter(ev_package == "ggplot2") 
+
+# For Kaggle, there are not eval calls originating from ggplot2
+ggplot2_symbs <- if(nrow(ggplot2_symbs) == 0 ) {
+  0 
+} else {
+  ggplot2_symbs %>% count(type, wt=duplicates) %>% filter(type == "symbol") %>% .$n
+}
+
+overview_table(
+  r("Symbolpercent", ratio(symbs, nb_calls)),
+  r("Languagepercent", ratio(languages, nb_calls)),
+  r("Expressionpercent", ratio(expressions, nb_calls)),
+  r("Codepercent", ratio(symbs + languages + expressions, nb_calls)),
+  r("Ggplotsymbolpercent", ratio(ggplot2_symbs, symbs))
+) -> TBL
+```
+
+
+`r TBL`
+
+
+# Most used function
+
+```{r}
+frequent_funcs <- E %>% count(func, wt = duplicates, sort = TRUE) %>% 
+  mutate(p = n / nb_calls, cp = cumsum(p))
+
+top_func <- frequent_funcs %>% filter(!is.na(func)) %>% .[1,]
+
+overview_table(
+  r("top func name", top_func$func),
+  r("top func calls", top_func$n),
+  r("top func percent", percent(top_func$p))
+) -> TBL
+```
+
+`r TBL`
+
+
+```{r include=FALSE}
+duration <- difftime(Sys.time(), now)
+```
+
+Notebook execution was `r duration` `r units(duration)`.

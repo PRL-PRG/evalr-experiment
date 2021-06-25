@@ -9,7 +9,6 @@ RUN DEBIAN_FRONTEND=noninteractive \
       libharfbuzz-dev \
       libfribidi-dev \
       openssh-server \
-      python3-pip \
       rr
 
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
@@ -41,8 +40,19 @@ RUN wget -O /tmp/fd.deb https://github.com/sharkdp/fd/releases/download/v8.2.1/f
   rm -f /tmp/fd.deb
 
 ENV R_PROJECT_BASE_DIR="/R" \
-    TERM=xterm
+    TERM=xterm-256color
 
+# install tracer dependencies
+ARG CRAN_MIRROR=https://cloud.r-project.org
+ARG DEPENDENCIES_TXT=dependencies.txt
+ADD $DEPENDENCIES_TXT /tmp/dependencies.txt
+RUN $R_DIR/bin/R -e 'install.packages(readLines("/tmp/dependencies.txt"), dependencies=TRUE, repos=Sys.getenv("CRAN_MIRROR"), Ncpus=parallel::detectCores())'
+
+# install tracer
+RUN $R_DIR/bin/R -e 'devtools::install_github(c("PRL-PRG/injectr", "PRL-PRG/instrumentr", "PRL-PRG/runr"))'
+RUN $R_DIR/bin/R -e 'devtools::install_github("PRL-PRG/evil", ref="oopsla21")'
+
+# r user and group - this is the user that will be used to run the experiments
 RUN useradd -u 1000 -m -U -G sudo -s /bin/bash r && \
   echo "%sudo ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
   echo "Defaults secure_path=\"$PATH\"" >> /etc/sudoers && \
@@ -51,8 +61,8 @@ RUN useradd -u 1000 -m -U -G sudo -s /bin/bash r && \
   touch /home/r/.parallel/will-cite && \
   mkdir -m 700 /home/r/.ssh
 
+# setup ssh authentication (used for the cluster workers)
 ADD id_rsa id_rsa.pub /home/r/.ssh/
-
 RUN cp /home/r/.ssh/id_rsa.pub /home/r/.ssh/authorized_keys && \
   chown -R r:r /home/r/.ssh && \
   chmod 600 /home/r/.ssh/id_rsa && \

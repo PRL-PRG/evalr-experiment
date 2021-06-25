@@ -31,7 +31,7 @@ process_functions <- function(raw) {
 }
 
 process_sloc <- function(raw) {
-  raw %>%
+  df <- raw %>%
     filter(path == "R" | path == "src") %>%
     select(-blank, -comment, -files, -path) %>%
     mutate(language=case_when(
@@ -45,8 +45,13 @@ process_sloc <- function(raw) {
     filter(!is.na(language)) %>%
     group_by(package, language) %>%
     summarise(code=sum(code)) %>%
-    spread(key=language, value=code, fill=0) %>%
+    spread(key=language, value=code, fill=0L) %>%
     ungroup()
+
+  # it could happen that one of these will be missing
+  defs <- c(package_r_code=0L, package_native_code=0L)
+
+  tibble::add_column(df, !!!defs[setdiff(names(defs), names(df))])
 }
 
 process_revdeps <- function(raw) {
