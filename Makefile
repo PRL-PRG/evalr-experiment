@@ -558,6 +558,7 @@ kaggle-preprocess:
 	cp -f $(KAGGLE_CORPUS_FILE) $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	$(RSCRIPT) -e 'x <- read.csv("$(KAGGLE_KERNELS_EVALS_STATIC_CSV)"); x[, "srcref"] <- paste0(x[, "package"],  x[, "srcref"]); write.csv(x, "$(KAGGLE_PREPROCESS_DIR)/evals-static.csv", row.names=F)'
 	cp -f $(KAGGLE_KERNELS_CSV) $(KAGGLE_PREPROCESS_DIR)
+	cp -f $(KAGGLE_TRACE_EVAL_STATS) $(KAGGLE_PREPROCESS_DIR)/trace-log.csv
 
 .PHONY: base-evals-static
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
