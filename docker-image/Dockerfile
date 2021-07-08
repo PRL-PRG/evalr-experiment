@@ -9,7 +9,6 @@ RUN DEBIAN_FRONTEND=noninteractive \
       libharfbuzz-dev \
       libfribidi-dev \
       openssh-server \
-      python3-pip \
       rr
 
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
