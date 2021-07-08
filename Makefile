@@ -43,8 +43,8 @@ BASE_SCRIPTS_TO_RUN_SIZE := 25000
 
 # tools
 MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
-R					:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/R
-RSCRIPT		:= R_LIBS=$(LIBRARY_DIR) $(R_DIR)/bin/Rscript
+R					:= $(R_DIR)/bin/R
+RSCRIPT		:= $(R_DIR)/bin/Rscript
 MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 CAT       := $(SCRIPTS_DIR)/cat.R
@@ -639,7 +639,7 @@ envir:
 	$(call INFO,CRAN_LOCAL_MIRROR)
 	$(call INFO,CRAN_DIR)
 	$(call INFO,CURDIR)
-	$(call INFO,LIBRARY_DIR)
+	$(call INFO,R_LIBS)
 	$(call INFO,R_BIN)
 	$(call INFO,RUN_DIR)
 	@echo "---"
@@ -652,7 +652,9 @@ SHELL_CMD ?= bash
 
 .PHONY: shell
 shell:
-	[ -d $(DOCKER_VOL_LIBRARY) ] || mkdir -p $(DOCKER_VOL_LIBRARY)
+	@[ -d $(R_LIBS) ] || mkdir -p $(R_LIBS)
+	@[ -d $(CRAN_ZIP_DIR) ] || mkdir -p $(CRAN_ZIP_DIR)
+	@[ -d $(CRAN_SRC_DIR) ] || mkdir -p $(CRAN_SRC_DIR)
 	docker run \
     --rm \
     --name $(DOCKER_SHELL_CONTAINER_NAME)-$$(openssl rand -hex 2) \
@@ -660,10 +662,10 @@ shell:
     -ti \
     -v "$(CURDIR):$(CURDIR)" \
     -v $$(readlink -f $(CRAN_DIR)):$(CRAN_DIR) \
-    -v $$(readlink -f $(LIBRARY_DIR)):$(LIBRARY_DIR) \
+    -v $$(readlink -f $(R_LIBS)):$(R_LIBS) \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
-    -e R_LIBS=$(LIBRARY_DIR) \
+    -e R_LIBS=$(R_LIBS) \
     -e TZ=Europe/Prague \
     -w $(CURDIR) \
     $(DOCKER_IMAGE_NAME) \

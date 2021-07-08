@@ -1,6 +1,6 @@
 # -*- mode: makefile -*-
 PROJECT_BASE_DIR ?= $(CURDIR)
-LIBRARY_DIR      ?= $(PROJECT_BASE_DIR)/library
+R_LIBS           ?= $(PROJECT_BASE_DIR)/library
 CRAN_DIR         ?= $(PROJECT_BASE_DIR)/CRAN
 R_DIR            ?= $(PROJECT_BASE_DIR)/R-dyntrace
 CRAN_MIRROR      := https://cloud.r-project.org
