@@ -130,6 +130,7 @@ BASE_TRACE_EVAL_STATS   := $(BASE_TRACE_EVAL_DIR)/parallel.csv
 BASE_TRACE_EVAL_FILES   := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 BASE_TRACE_EVAL_CALLS   := $(BASE_TRACE_EVAL_DIR)/calls.fst
 BASE_TRACE_EVAL_REFLECTION   := $(BASE_TRACE_EVAL_DIR)/reflection.fst
+BASE_TRACE_EVAL_PROVENANCES := $(BASE_TRACE_EVAL_DIR)/provenances.fst
 BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
 
 # based on the last run, except for:
@@ -158,6 +159,7 @@ KAGGLE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 KAGGLE_TRACE_EVAL_CALLS := $(KAGGLE_TRACE_EVAL_DIR)/calls.fst
 KAGGLE_TRACE_EVAL_REFLECTION := $(KAGGLE_TRACE_EVAL_DIR)/reflection.fst
+KAGGLE_TRACE_EVAL_PROVENANCES := $(KAGGLE_TRACE_EVAL_DIR)/provenances.fst
 
 ########################################################################
 # TARGETS                                                              #
@@ -440,6 +442,7 @@ $(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRA
 	  $(PREPROCESS_TYPE) \
     --corpus $(CORPUS) \
     --calls $(PACKAGE_TRACE_EVAL_CALLS) \
+	--provenance $(PACKAGE_TRACE_EVAL_PROVENANCES) \
     --reflection $(PACKAGE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(PACKAGE_SUM_FILE) \
     --out-summarized-externals $(PACKAGE_SUM_EXTERNALS_FILE) \
@@ -463,6 +466,7 @@ $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
     $(PREPROCESS_TYPE) \
     --corpus $(PACKAGES_CORE_FILE) \
     --calls $(BASE_TRACE_EVAL_CALLS) \
+	--provenance $(BASE_TRACE_EVAL_PROVENANCES) \
     --reflection $(BASE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(BASE_SUM_FILE) \
     --out-summarized-externals $(BASE_SUM_EXTERNALS_FILE) \
@@ -474,6 +478,7 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(K
     $(PREPROCESS_TYPE) \
     --corpus $(KAGGLE_CORPUS_FILE) \
     --calls $(KAGGLE_TRACE_EVAL_CALLS) \
+	--provenance $(KAGGLE_TRACE_EVAL_PROVENANCES) \
     --reflection $(KAGGLE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(KAGGLE_SUM_FILE) \
     --out-summarized-externals $(KAGGLE_SUM_EXTERNALS_FILE) \

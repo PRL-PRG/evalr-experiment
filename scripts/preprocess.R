@@ -351,6 +351,17 @@ undefined_packages <- function(eval_calls) {
     filter(eval_source == "base?")
 }
 
+add_provenances <- function(df, provenances) {
+  # Remove the old provenance columns
+  df <- df %>% select(-expr_match_call, -expr_parsed_expression)
+  
+  # prepare the common columns
+  df <- df %>% mutate(basepath = dirname(file))
+  provenances <- provenances %>% mutate(basepath = dirname(file)) %>% select(-file)
+  
+  left_join(df, provenances, by = c("eval_call_id", "basepath")) %>% select(-basepath)
+}
+
 
 ### Command line and preprocessing pipeline
 
@@ -370,6 +381,7 @@ read_merged_file <- function(filepath) {
 preprocess_calls <- function(arguments) {
   corpus_file <- arguments$corpus_file
   calls_file <- arguments$calls_file
+  provenance_file <- arguments$provenance_file
   evals_undefined_file <- arguments$evals_undefined_file
   evals_summarized_file <- arguments$evals_summarized_file
   evals_summarized_externals_file <- arguments$evals_summarized_externals_file
@@ -391,6 +403,22 @@ preprocess_calls <- function(arguments) {
   ## Preprocessing pipeline
 
   cat("Preprocessing ", calls_file, "\n")
+  
+  if(!is.na(provenance_file)) {
+    cat("Reading provenances\n")
+    now <- Sys.time()
+    provenances <- read_fst(provenance_file) %>% as_tibble()
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
+    
+    cat("Adding provenances\n")
+    now <- Sys.time()
+    eval_calls_raw <- eval_calls_raw %>% add_provenances(provenances)
+    res <- difftime(Sys.time(), now)
+    cat("Done in ", res, units(res), "\n")
+  }
+  
+
 
   cat("Deduplicating from ", nrow(eval_calls_raw), " rows")
   now <- Sys.time()
@@ -532,6 +560,11 @@ parse_program_arguments <- function() {
       c("--reflection"),
       dest = "reflection_file", metavar = "FILE",
       help = "Reflection file"
+    ),
+    make_option(
+      c("--provenance"),
+      dest = "provenance_file", metavar = "FILE",
+      help = "Add provenances"
     ),
     make_option(
       c("--out-undefined"),
