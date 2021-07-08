@@ -5,6 +5,29 @@ CRAN_DIR         ?= $(PROJECT_BASE_DIR)/CRAN
 R_DIR            ?= $(PROJECT_BASE_DIR)/R-dyntrace
 CRAN_MIRROR      := https://cloud.r-project.org
 
+# R package dependencies for libraries
+DEPENDENCIES_TXT := dependencies.txt
+DEPENDENCIES := devtools \
+  digest \
+  dplyr \
+  fs \
+  fst \
+  lubridate \
+  magrittr \
+  optparse \
+  pbapply \
+  progress \
+  purrr \
+  readr \
+  rjson \
+  rmarkdown \
+  stringr \
+  tidyverse \
+  tibble \
+  tidyr \
+  withr \
+  pbapply
+
 DOCKER_IMAGE_NAME            := prlprg/project-evalr
 DOCKER_RSTUDIO_IMAGE_NAME    := fikovnik/rstudio:4.0.2
 DOCKER_R_DYNTRACE_IMAGE_NAME := prlprg/r-dyntrace:r-4.0.2
@@ -20,3 +43,6 @@ SSH_NUM_SLOTS := 64
 HOSTS := prl2 prl4
 # slaves (excluding the one from which we run this make file)
 SLAVES = $(filter-out $(HOSTNAME),$(HOSTS))
+
+$(DEPENDENCIES_TXT):
+	@echo $(DEPENDENCIES) | tr ' ' '\n' > $(DEPENDENCIES_TXT)
