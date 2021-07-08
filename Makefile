@@ -104,16 +104,16 @@ PACKAGE_RUN_DIR   := $(RUN_DIR)/package-run
 PACKAGE_RUN_STATS := $(PACKAGE_RUN_DIR)/parallel.csv
 
 # trace
-PACKAGE_TRACE_EVAL_DIR				:= $(RUN_DIR)/package-trace-eval
-PACKAGE_TRACE_EVAL_STATS			:= $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
-PACKAGE_TRACE_EVAL_FILES			:= $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
-PACKAGE_TRACE_EVAL_CALLS			:= $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
-PACKAGE_TRACE_EVAL_CODE				:= $(PACKAGE_TRACE_EVAL_DIR)/code.fst
-PACKAGE_TRACE_EVAL_REFLECTION := $(PACKAGE_TRACE_EVAL_DIR)/reflection.fst
-PACKAGE_TRACE_EVAL_WRITES     := $(PACKAGE_TRACE_EVAL_DIR)/writes.fst
+PACKAGE_TRACE_EVAL_DIR         := $(RUN_DIR)/package-trace-eval
+PACKAGE_TRACE_EVAL_STATS       := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
+PACKAGE_TRACE_EVAL_FILES       := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
+PACKAGE_TRACE_EVAL_CALLS       := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
+PACKAGE_TRACE_EVAL_CODE        := $(PACKAGE_TRACE_EVAL_DIR)/code.fst
+PACKAGE_TRACE_EVAL_REFLECTION  := $(PACKAGE_TRACE_EVAL_DIR)/reflection.fst
+PACKAGE_TRACE_EVAL_WRITES      := $(PACKAGE_TRACE_EVAL_DIR)/writes.fst
 PACKAGE_TRACE_EVAL_PROVENANCES := $(PACKAGE_TRACE_EVAL_DIR)/provenances.fst
-PACKAGE_SCRIPTS_TO_RUN_TXT		:= $(RUN_DIR)/package-scripts-to-run.txt
-PACKAGE_EVALS_TO_TRACE				:= $(RUN_DIR)/package-evals-to-trace.txt
+PACKAGE_SCRIPTS_TO_RUN_TXT     ?= $(RUN_DIR)/package-scripts-to-run.txt
+PACKAGE_EVALS_TO_TRACE         := $(RUN_DIR)/package-evals-to-trace.txt
 
 # base static evals
 BASE_EVALS_STATIC_DIR   := $(RUN_DIR)/base-evals-static
@@ -562,6 +562,8 @@ kaggle-preprocess:
 	@$(MAKE) $(KAGGLE_CORPUS_FILE)
 	cp -f $(KAGGLE_CORPUS_FILE) $(KAGGLE_PREPROCESS_DIR)/corpus.txt
 	$(RSCRIPT) -e 'x <- read.csv("$(KAGGLE_KERNELS_EVALS_STATIC_CSV)"); x[, "srcref"] <- paste0(x[, "package"],  x[, "srcref"]); write.csv(x, "$(KAGGLE_PREPROCESS_DIR)/evals-static.csv", row.names=F)'
+	cp -f $(KAGGLE_KERNELS_CSV) $(KAGGLE_PREPROCESS_DIR)
+	cp -f $(KAGGLE_TRACE_EVAL_STATS) $(KAGGLE_PREPROCESS_DIR)/trace-log.csv
 
 .PHONY: base-evals-static
 base-evals-static: $(BASE_EVALS_STATIC_CSV)
