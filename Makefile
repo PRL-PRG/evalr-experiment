@@ -204,7 +204,7 @@ define CLONE_REPO
 endef
 
 define ASSERT_NOT_IN_DOCKER
-	@if [ $$IN_DOCKER != "1" ]; then echo "This make target ($@) should not be run in docker!"; exit 1; fi
+	@if [ -n "$$IN_DOCKER" ]; then echo "This make target ($@) should not be run in docker!"; exit 1; fi
 endef
 
 ########################################################################
