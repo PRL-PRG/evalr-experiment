@@ -42,11 +42,14 @@ RUN wget -O /tmp/fd.deb https://github.com/sharkdp/fd/releases/download/v8.2.1/f
 ENV R_PROJECT_BASE_DIR="/R" \
     TERM=xterm-256color
 
-# install R dependencies for the experiment
+# install tracer dependencies
 ARG CRAN_MIRROR=https://cloud.r-project.org
 ARG DEPENDENCIES_TXT=dependencies.txt
 ADD $DEPENDENCIES_TXT /tmp/dependencies.txt
 RUN $R_DIR/bin/R -e 'install.packages(readLines("/tmp/dependencies.txt"), dependencies=TRUE, repos=Sys.getenv("CRAN_MIRROR"), Ncpus=parallel::detectCores())'
+
+# install tracer
+RUN $R_DIR/bin/R -e 'devtools::install_github(c("PRL-PRG/injectr", "PRL-PRG/instrumentr", "PRL-PRG/runr", "PRL-PRG/evil"))'
 
 # r user and group - this is the user that will be used to run the experiments
 RUN useradd -u 1000 -m -U -G sudo -s /bin/bash r && \
