@@ -670,6 +670,18 @@ info:
 	$(call INFO,JOBS)
 	$(call INFO,TIMEOUT)
 
+.PHONY: package-analysis
+package-analysis: package-preprocess
+	$(MAKE) -C analysis package
+
+.PHONY: base-anlysis
+base-analysis: base-preprocess
+	$(MAKE) -C analysis base
+
+.PHONY: analysis
+analysis: preprocess
+	$(MAKE) -C analysis
+
 DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
 # default shell command
 SHELL_CMD ?= bash

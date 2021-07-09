@@ -1,0 +1,843 @@
+---
+title: "Normalized expressions"
+output:
+    html_document:
+        gallery: false
+        toc: true
+        toc_depth: 3
+        toc_float: true
+        df_print: paged
+date: "`r Sys.Date()`"
+editor_options: 
+  chunk_output_type: console
+params:
+  base_dir: ../run/preprocess/package
+  output_dir: output
+  calls_path: summarized.fst
+  normalized_path: normalized-expressions.csv
+  corpus_path: corpus.txt
+  static_path: evals-static.csv
+  force_rebuild: TRUE
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(fst)
+library(fs)
+library(DT)
+library(scales)
+library(corrr)
+library(boot)
+
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) { # record the current time before each chunk
+      now <<- Sys.time()
+    } else { # calculate the time difference after a chunk
+      res <- difftime(Sys.time(), now)
+      # return a character string to show the time
+      paste("Time for this code chunk to run:", round(res, 2), units(res))
+    }
+  }
+}))
+now <- Sys.time()
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.retina = 2,
+  fig.width = 10,
+  cache.lazy = FALSE,
+  time_it = TRUE
+)
+
+source("inc/paths.R")
+source("inc/latextags.R")
+source("inc/functions.R")
+theme_set(theme_minimal())
+
+dataset_name <- basename(params$base_dir)
+
+# Tags will be prefixed by the dataset name
+create_tags(path(TAGS_DIR, paste0(dataset_name, "_normalized_expr.tex")), prefix = dataset_name, default = TRUE)
+# Also use ggsave_prefix instead of ggsave if you need to save a graph
+
+calls_path <- file.path(params$base_dir, params$calls_path)
+corpus_path <- file.path(params$base_dir, params$corpus_path)
+static_path <- file.path(params$base_dir, params$static_path)
+normalized_path <- file.path(params$base_dir, params$normalized_path)
+
+lock_path <- file.path(params$base_dir, ".normalized-lock.fst")
+min_path <- file.path(params$base_dir, "Ecano.fst")
+
+manual_value_necessary <- tribble(
+  ~src_ref, ~necessary,
+ "::MedDietCalc::computeMDS95::9", TRUE,
+ "::netmeta::netmeta::7", TRUE,
+ "ff::write.csv::1", TRUE,
+ "::ctmle::evaluate_candidates_glmnet::1", FALSE,
+ "::BAS::.drop.null.bas::1", TRUE,
+ "::lattice::xyplot.formula::3", FALSE,
+ "::pwrFDR::pwrFDR::5", TRUE,
+ "::semTools::measEq.syntax::11", FALSE,
+ "::vegan::MOStest::1", TRUE,
+ "::KSPM::stepKSPM::9", FALSE,
+ "::deSolve::daspk::2", TRUE,
+ "::yuima::Y_e_e_V0::1", TRUE,
+ "::bartCause::getBartResponseFit::9", FALSE,
+ "::ormPlot::orm_graph::3", FALSE,
+ "::rpart.plot::prp::13", TRUE,
+ "::gglasso::margin::2", FALSE,
+ "::HDclassif::hdda_control::5", TRUE,
+ "::pwrFDR::pwrFDR::6", TRUE,
+ "::MedDietCalc::computeFRESCO::6", TRUE,
+ "/tmp/RtmpJ8UxaT/R.INSTALL379f17a32d980/blme/R/dist.R:172:5:172:60", TRUE
+)
+
+```
+
+# Read
+
+Read in the summarized calls data (`E_raw`) and the file that describes
+which package belong to our corpus (`C_raw`). For conciseness, `E` is
+the input data set with only the columns that we use. We also read the file with normalized expressions, `N`.
+
+```{r read, message=TRUE, include=F}
+tibble(package = read_lines(corpus_path)) -> C_raw
+read_csv(static_path) %>% semi_join(C_raw, by = "package") -> P
+
+rebuild <- TRUE
+
+E_cano <- NULL
+
+if (file.exists(lock_path)) {
+  saved <- read.fst(lock_path)[[1,1]]
+  if (saved == file.size(calls_path)) {
+    read_fst(min_path) %>% as_tibble() -> E_cano
+    rebuild <- FALSE
+  }
+}
+
+if(params$force_rebuild || rebuild) {
+  read_fst(calls_path) %>% as_tibble() %>% semi_join(C_raw, by = c("eval_source" = "package")) -> E_raw
+  
+  E_raw <- E_raw %>% mutate(envir_expression = if_else(envir_type == "NULL", "NULL", envir_expression)) %>% 
+    mutate(envir_expression = na_if(envir_expression, "NA")) %>%
+    mutate(interp_eval = interp_eval - 14)  # 14 is the magic number corresponding to the number of steps of `eval(1)` (or `eval(some value)`)
+  
+  read_csv(normalized_path, col_types = cols(
+    minimized = col_character(),
+    topcall = col_character(),
+    is_model = col_logical(),
+    has_fundef = col_logical(),
+    has_calls = col_integer(),
+    has_assigns = col_integer(),
+    has_var = col_logical(),
+    has_bracket = col_logical(),
+    is_assign = col_logical(),
+    is_value = col_logical(),
+    is_ignore = col_logical(),
+    has_dollar = col_logical(),
+    has_user_call = col_logical(),
+    has_block = col_logical(),
+    has_meta_op = col_logical(),
+    normalized = col_character(),
+    trimmed = col_character(),
+    hash = col_character()
+  )) -> N
+  
+  # We currently merge minimized expressions F(F(X)) and F(F())
+  N <- N %>% mutate(minimized = if_else(minimized == "F(F())", "F(F(X))", minimized))
+  
+  E_raw %>% select(
+    run_package = package, #      The package which was run to trigger the eval
+    ev_variant = eval_function, # Which eval variant was called
+    duplicates = nb_ev_calls, #   Number of identical eval calls (weight)
+    src_ref = eval_call_srcref, # Source ref for the eval call site
+    file, #                       Script file name (name of this run)
+    ev_package = eval_source, #   Package of the call site
+    type = expr_resolved_type_tag, #   Argument type
+    ev_expr = expr_expression,
+    expr_resolved,
+    func = expr_resolved_function, # the function (if any) at the root of the AST of expr_resolved
+    parsed = expr_parsed_expression,
+    hash = expr_resolved_hash,
+    match.call = expr_match_call,
+    arg_size = expr_resolved_length, #   Size in characters of argument 
+    ast_nodes = expr_resolved_nodes,
+    n_op = interp_eval,
+    envir = envir_expression,
+    caller_srcref,
+    caller_expression,
+    environment_class
+  ) -> E
+  
+  
+  E_cano <- E %>% left_join(N, by = "hash") # Common column is the hash of the full resolved expression
+  
+  E_cano %>% write_fst(min_path)
+  sz <- file.size(calls_path) %>% as_tibble()
+  write.fst(sz, lock_path)
+}
+
+C_raw -> C
+corpus_size <- nrow(C)
+```
+
+
+Some useful numbers:
+```{r}
+nb_call_sites <- E_cano %>%
+  pull(src_ref) %>%
+  n_distinct()
+
+r("Nb call sites", nb_call_sites)
+```
+
+
+There are `r nb_call_sites` call sites in the dataset.
+
+
+
+# Ranking of normalized and minimized expressions
+
+
+Normalized: 
+```{r}
+widespread_canonic <- E_cano %>%
+  group_by(normalized) %>%
+  summarize(n_call_sites = n_distinct(src_ref), n_packages = n_distinct(ev_package))
+
+widespread_canonic %>%
+  arrange(desc(n_call_sites)) %>%
+  datatable()
+```
+
+
+Minimized:
+```{r}
+widespread_minimized <- E_cano %>% filter(type != "bytecode") %>% #Only two sites anyway
+  group_by(minimized) %>%
+  summarize(n_call_sites = n_distinct(src_ref), 
+            proportion = ratio(n_call_sites, nb_call_sites), 
+            n_packages = n_distinct(ev_package),
+            n_operations = round(mean(n_op, na.rm=TRUE)), 
+            med_operations = median(n_op, na.rm = TRUE),
+            percent_envir = ratio(n_distinct(cur_data()$src_ref[!is.na(cur_data()$envir)]),  n_call_sites), 
+            percent_envir_calls = ratio(sum(!is.na(envir)), n()), 
+            env_diversity = n_distinct(envir), 
+            percent_envir_parent_frames = ratio(n_distinct(cur_data()$src_ref[str_starts(cur_data()$environment_class, fixed("caller-"))]),  n_call_sites),
+            percent_envir_non_parentframe = ratio(n_distinct(cur_data()$src_ref[!is.na(cur_data()$envir) & cur_data()$envir != "parent.frame()"]),  n_call_sites)) %>% 
+  arrange(desc(n_call_sites))
+
+widespread_minimized %>%
+  datatable()
+```
+
+```{r}
+nrows <- min(12, nrow(widespread_minimized)) # kaggle has less than 12 rows
+r_vec("MinimizedCallSites", nrows, pull(widespread_minimized, n_call_sites))
+r_vec("MinimizedPropSites", nrows, pull(widespread_minimized, proportion), digits=0)
+r_vec("MinimizedPackage", nrows, pull(widespread_minimized, n_packages))
+r_vec("MinimizedOperations", nrows, pull(widespread_minimized, n_operations))
+r_vec("MinimizedMedianOperations", nrows, pull(widespread_minimized, med_operations))
+r_vec("MinimizedPercentEnvir", nrows, pull(widespread_minimized, percent_envir), digits=0)
+r_vec("MinimizedPercentCallsEnvir", nrows, pull(widespread_minimized, percent_envir_calls), digits=0)
+r_vec("MinimizedPercentEnvirNonParent", nrows, pull(widespread_minimized, percent_envir_non_parentframe), digits=0)
+r_vec("MinimizedPercentParentFrames", nrows, pull(widespread_minimized, percent_envir_parent_frames), digits=0)
+```
+
+`n_operations` is the average of R interpreter eval loop per minimized expression. `prop_envir` shows how much often an *explicit* environment is passed to `eval`. Looking up to a variable and applying a function to a variable, are the two non-trivial categories that most of the time explicitly use the `envir` argument of `eval`.
+
+# Examples of minimized expression
+
+```{r}
+examples_minimized <- E_cano %>% group_by(minimized) %>% filter(!is.na(expr_resolved) & str_length(expr_resolved) < 50) %>% 
+  summarise(example = nth(unique(expr_resolved), 100))
+
+examples_minimized %>% datatable()
+```
+
+# How does it evolve per call site
+
+To check whether the normalization makes sense, we have a look at how many normalized expressions we have per call sites.
+
+```{r}
+# count hash because resolved expressions are trimmed but hash are on the full expression
+by_src_ref <- E_cano %>% group_by(src_ref) %>%
+  summarise(n_resolved = n_distinct(hash), n_normalized = n_distinct(normalized), n_minimized = n_distinct(minimized))
+```
+
+```{r}
+by_src_ref %>% arrange(desc(n_resolved)) %>% datatable()
+```
+
+There should always be less normalized expressions than resolved ones. 
+We can see for how many there are strictly less (or one when it was already one).
+
+
+```{r}
+decrease_exprs <- by_src_ref %>% filter(n_resolved == 1 | n_resolved > n_minimized)  %>% arrange(desc(n_minimized))
+```
+
+It corresponds to `r nrow(decrease_exprs)` call sites so only `r nb_call_sites - nrow(decrease_exprs)` have non-trivially not decreased the number of call sites.
+
+# Top calls
+
+For the functions at the root of the AST, per call site:
+
+```{r}
+widespread_topcall <- E_cano %>%
+  group_by(topcall) %>%
+  summarize(n_call_sites = n_distinct(src_ref), percent = round(ratio(n_call_sites, nb_call_sites), 2)) %>% 
+  arrange(desc(n_call_sites))
+```
+
+```{r}
+widespread_topcall %>% datatable()
+```
+
+
+```{r}
+big_topcall <- widespread_topcall %>% filter(n_call_sites > 3) 
+```
+
+
+There are `r nrow(big_topcall)` top calls out of `r nrow(widespread_topcall)` that are present in strictly more than 3 call sites.
+
+# Variables
+
+
+The percentage of non-default envir for variables seem to be quite low for the use-case. What if we remove more complex expressions and just keep the symbols?
+
+```{r}
+var_minimized <- E_cano %>% filter(minimized == "X")
+nb_var_min_sites <- var_minimized %>% pull(src_ref) %>% n_distinct()
+
+var_symb <-  E_cano %>% filter(minimized == "X", type == "symbol")
+nb_var_symb_sites <- var_symb %>% pull(src_ref) %>% n_distinct()
+
+var_symb_non_default_envir <- var_symb %>% filter(!is.na(envir))
+nb_var_symb_ndefault_sites <- var_symb_non_default_envir %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+  r("nb symbol var sites", nb_var_symb_sites),
+  r("nb symbol var site percent", ratio(nb_var_symb_sites, nb_var_min_sites)),
+  r("nb non default envir variables percent", ratio(nb_var_symb_ndefault_sites, nb_var_symb_sites))
+)
+```
+
+What happens for the symbol with the default envir?
+
+```{r}
+var_sym_default_envir <- var_symb %>% filter(is.na(envir)) %>% count(src_ref, sort = TRUE)
+```
+
+
+# Function definitions
+
+```{r}
+
+fundefs <- E_cano %>% filter(minimized == "FUN")
+nb_fundef_sites <- fundefs %>% pull(src_ref) %>% n_distinct()
+ndefault_envir_fundefs <- fundefs %>% filter(!is.na(envir))
+nb_ndefault_envir_fundef_sites <- ndefault_envir_fundefs %>% pull(src_ref) %>% n_distinct()
+
+generalized_fundefs <- E_cano %>% filter(has_fundef)
+nb_generalized_fundef_sites <- generalized_fundefs %>% pull(src_ref) %>% n_distinct()
+ndefault_envir_gen_fundefs <- generalized_fundefs %>% filter(!is.na(envir))
+nb_ndefault_envir_gen_fundef_sites <- ndefault_envir_fundefs %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+  r("function definition sites", nb_fundef_sites),
+  r("function definition sites percent", ratio(nb_fundef_sites, nb_call_sites)),
+  r("fundef non default envir sites percent", ratio(nb_ndefault_envir_fundef_sites, nb_fundef_sites)),
+  r("generalized function definition sites", nb_generalized_fundef_sites),
+  r("generalized function definition sites percent", ratio(nb_generalized_fundef_sites, nb_call_sites)),
+  r("generalized funded non default envir sites percent", ratio(nb_ndefault_envir_gen_fundef_sites, nb_generalized_fundef_sites))
+)
+```
+
+There are `r nb_generalized_fundef_sites` call sites with function definitions, i.e. `r ratio(nb_generalized_fundef_sites, nb_call_sites)` %.
+
+# Model.frame
+
+```{r}
+modelframes <- E_cano %>% filter(is_model)
+
+nb_modelf_call_sites <- modelframes %>% pull(src_ref) %>% n_distinct()
+```
+
+
+There are `r nb_modelf_call_sites` call sites with `mode.frame`, i.e. `r ratio(nb_modelf_call_sites, nb_call_sites)`%.
+
+Is it usually in top call position?
+
+```{r}
+modelframes %>% filter(topcall != "model.frame")
+```
+
+Yes, always!
+
+Is it correlated with `match.call`?
+
+```{r}
+nb_mf_match.call <- modelframes %>% filter(!is.na(match.call)) %>% pull(src_ref) %>% n_distinct()
+```
+
+`r nb_mf_match.call` call sites out of `model.frame` `r nb_modelf_call_sites` call sites use the `match.call` pattern, i.e. `r ratio(nb_mf_match.call, nb_modelf_call_sites)`%.
+
+We can also reciprocally look at how many call sites with `match.call` have `model.frame`:
+
+```{r}
+match.call_df <- E_cano %>% filter(!is.na(match.call))
+
+nb_m.c_call_sites <- match.call_df %>% pull(src_ref) %>% n_distinct()
+
+nb_m.c_mf_call_sites <- match.call_df %>% filter(is_model) %>% pull(src_ref) %>% n_distinct()
+```
+
+So `r ratio(nb_m.c_mf_call_sites, nb_m.c_call_sites)`% of the call sites with the `match.call` pattern use `model.frame`.
+
+# Assignments
+
+When do we perform assignments (causing potentially side effects)?
+
+```{r}
+assigns <- E_cano %>% filter(has_assigns > 0)
+
+nb_assigns_call_sites <- assigns %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+  r("nb assign sites", nb_assigns_call_sites),
+  r("assign sites percent", ratio(nb_assigns_call_sites, nb_call_sites))
+)
+```
+
+There are `r nb_assigns_call_sites` call sites with assignments, i.e. `r ratio(nb_assigns_call_sites, nb_call_sites)`%.
+
+
+Is the `envir` argument non trivial?
+
+```{r}
+assign_env <- assigns %>% filter(!is.na(envir))
+
+nb_a_env_call_sites <- assign_env %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+  r("non default envir assign sites", nb_a_env_call_sites),
+  r("non default envir assign sites percent", ratio(nb_a_env_call_sites, nb_assigns_call_sites))
+)
+```
+
+
+There are `r nb_a_env_call_sites` call sites where `envir` is non-trivial, with an assignment, i.e. `r ratio(nb_a_env_call_sites, nb_assigns_call_sites)`% of the call sites with assignments.
+
+
+# `match.call` pattern
+
+There are `r nb_m.c_call_sites` call sites using the `match.call`pattern, i.e. `r ratio(nb_m.c_call_sites, nb_call_sites)`%.
+
+The top calls for this pattern are:
+
+```{r}
+match.call_df %>% 
+  group_by(topcall) %>%
+  summarize(n_call_sites = n_distinct(src_ref)) %>% 
+  arrange(desc(n_call_sites))
+```
+
+Most are `model.frame`. If we add other model functions, such as `glm` and `plm`: 
+
+```{r}
+stat_functions <- c("model.frame", "glm", "lm", "plm", "elo.model.frame", "lmer", "randomForest", "betareg", "nlreg", "model.frame.default", "model.matrix", "arima", "glm.nb", "glmer") # There are many more
+
+nb_stat_call_sites <- match.call_df %>% 
+  filter(topcall %in% stat_functions) %>% 
+  pull(src_ref) %>% 
+  n_distinct()
+  
+```
+
+it amounts for `r nb_stat_call_sites` call sites, i.e `r ratio(nb_stat_call_sites, nb_call_sites)`%.
+
+# Substitute&co
+
+`substitute`, `quote` and so on are used to do meta-programming.
+
+```{r}
+meta_df <- E_cano %>% filter(has_meta_op)
+
+nb_meta_call_sites <- meta_df %>% pull(src_ref) %>% n_distinct()
+```
+
+There are `r nb_meta_call_sites` call sites with `substitute` and `substitute`-like operators.
+
+Are the `substitute` sometimes not placed as a top call?
+
+```{r}
+meta_not_top <- meta_df %>% filter(!topcall %in% c("substitute", "quote", "enquote", "bquote"))
+
+nb_m_n_top_call_sites <- meta_not_top %>% pull(src_ref) %>% n_distinct()
+```
+
+It happens for `r nb_m_n_top_call_sites` call sites, i.e. `r ratio(nb_m_n_top_call_sites, nb_call_sites)`%.
+
+# Complex blocks
+
+`eval` can evaluate sometimes complex blocks.
+
+```{r}
+blocks <- E_cano %>% filter(has_block)
+
+nb_blocks_call_sites <- blocks %>% pull(src_ref) %>% n_distinct()
+```
+
+
+There are `r nb_blocks_call_sites` such call sites, i.e. `r ratio(nb_blocks_call_sites, nb_call_sites)`%.
+
+`eval` is used to insert blocks of code inside the function, for instance as a preprocessing and postprocessing step. There are some examples in the VGAM package. In that case, `{` will be at the root of the AST.
+
+```{r}
+pre_post <- blocks %>% filter(topcall == "{")
+
+nb_pre_post_call_sites <- pre_post %>% pull(src_ref) %>% n_distinct()
+```
+
+It happens in `r nb_pre_post_call_sites` call sites so most of the call sites with blocks (`r ratio(nb_pre_post_call_sites, nb_blocks_call_sites)`%).
+
+# `Parse` and plotting functions
+
+We approximate the plotting function by just looking for `plot` in their name:
+
+```{r}
+plotting <- E_cano %>% filter(str_detect(normalized, fixed("plot"))) # not in topcall because f it results from parse...
+
+nb_plotting_call_sites <- plotting %>% pull(src_ref) %>% n_distinct()
+```
+
+There are `r nb_plotting_call_sites` plotting call sites, i.e. `r ratio(nb_plotting_call_sites, nb_call_sites)`%.
+
+Are they built using parse? For that, we look at the non-resolved expression (`parse` will disappear after).
+
+Currently, we use a regex. When `parsed` column is fixed, we will get more accurate results.
+
+```{r}
+parse_plot <- plotting %>% filter(str_detect(ev_expr, fixed("parse")))
+
+nb_parse_plot_call_sites <- parse_plot %>% pull(src_ref) %>% n_distinct()
+```
+
+This already amounts to `r nb_parse_plot_call_sites` call sites, i.e. `r ratio(nb_parse_plot_call_sites, nb_plotting_call_sites)`% of the plotting call sites.
+
+### Infix operators
+
+```{r}
+infix <- E_cano %>% filter(str_detect(topcall, "%[^%]*%"))
+
+nb_infix_call_sites <- infix %>% pull(src_ref) %>% n_distinct()
+```
+
+It happens in `r nb_infix_call_sites` call sites, i.e. `r ratio(nb_infix_call_sites, nb_call_sites)`%.
+
+The packages that use or define those infix operators:
+
+```{r}
+infix %>% group_by(ev_package) %>% summarize(n_call_sites = n_distinct(src_ref)) %>% arrange(desc(n_call_sites)) %>% datatable()
+```
+
+
+
+
+
+# Polymorphism in more details
+
+We have only 15 different kind of minimized expression. Do some minimized expressions often go together?
+
+```{r}
+minimized_exprs <- E_cano %>% pull(minimized) %>% unique()
+
+create_set <- function(l) {
+  s <- rep.int("F", length(minimized_exprs))
+  names(s) <- minimized_exprs
+  
+  for(exp in l) {
+    s[[exp]] <- "T"
+  }
+  
+  return(paste0(s, collapse = ""))
+}
+
+index_v <- match("V", minimized_exprs)
+index_x <- match("X", minimized_exprs)
+
+has_value <- function(l) {
+  substr(l, index_v, index_v) == "T"
+}
+
+is_variable <- function(l) {
+  substr(l, index_x, index_x) == "T"
+}
+
+count_elements <- function(l) {
+  sum(map_int(strsplit(l, split="")[[1]], function(ch) {if(ch == "T") {1L} else {0L}}))
+}
+
+show_set <- function(s) {
+  l <- strsplit(s, split="")[[1]]
+  names(l) <- minimized_exprs
+  
+  l <- l[which(l == "T")]
+  return(paste0(names(l), collapse = "; "))
+}
+
+poly <- E_cano %>% group_by(src_ref) %>%
+    summarize(common_minimized = create_set(minimized), n_exprs = n_distinct(minimized)) 
+```
+
+With these minimized expressions:
+
+```{r}
+minimized_exprs
+```
+
+Now, we can show the mot common minimized expressions per site:
+
+```{r}
+combination_ranking <- poly %>%
+  count(common_minimized,  sort = TRUE) %>%
+  mutate(common_minimized = map_chr(common_minimized, show_set)) %>% 
+  mutate(percent = round(100 * n / nb_call_sites, 2)) %>%
+  mutate(cumpercent =cumsum(percent))
+
+combination_ranking %>% 
+  datatable()
+```
+
+And represented as a bar plot:
+
+```{r}
+combination_ranking %>%
+  filter(cumpercent < if(nrow(combination_ranking) <= 10) 101 else 95) %>%
+  ggplot(aes(x = fct_reorder(common_minimized, n), y = percent)) + 
+  geom_col() + 
+  labs(x = "Combinations", y = "%") +
+  coord_flip()
+  #theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+ggsave_prefix("combination_minimized.pdf")
+```
+
+
+How many sites have only one minimized expression?
+
+```{r}
+n_one_mini <- poly %>% filter(n_exprs == 1) %>% nrow()
+
+overview_table(
+  r("Nb One Minimized", n_one_mini),
+  r("Nb One Minimized Percent", ratio(n_one_mini, nb_call_sites))
+)
+```
+
+
+# Values
+
+Many call sites only evaluate a value. It is either a language expression or symbol, or an actual value.
+
+```{r}
+value_minimized <- widespread_minimized %>% filter(minimized == "V")
+```
+
+
+These are the number of call sites that are actual values.
+```{r}
+main_types <- E_cano %>% group_by(src_ref) %>% summarise(nb_types = n_distinct(type), type = first(type), nb_runs = n_distinct(file))
+
+only_actual_values <- main_types %>% filter(!type %in% c("symbol", "language", "expression", "promise"), nb_types == 1)
+nb_actual_values_sites <- only_actual_values %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+r("nb call sites unique actual value", nb_actual_values_sites),
+r("call sites unique actual value percent", ratio(nb_actual_values_sites, value_minimized$n_call_sites)),
+r("median run sites unique actual value", median(only_actual_values$nb_runs, na.rm = TRUE)),
+r("average run sites unique actual value", mean(only_actual_values$nb_runs, na.rm = TRUE)),
+r("sd run sites unique actual value", sd(only_actual_values$nb_runs, na.rm = TRUE))
+)
+```
+
+
+
+Is it a simple or a complex value?
+
+```{r}
+val_exprs <- E_cano %>% filter(minimized == "V") %>%
+  mutate(caller_srcref = if_else(is.na(caller_srcref), file, caller_srcref)) %>%
+  group_by(src_ref) %>%
+  summarise(avg_ast_nodes = mean(ast_nodes, na.rm = TRUE), avg_arg_size = mean(arg_size, na.rm = TRUE), nb_runs = n_distinct(file), nb_caller_srcref = n_distinct(caller_srcref), nb_calls = sum(duplicates), nb_caller_exprs = n_distinct(caller_expression)) %>%
+  arrange(desc(avg_ast_nodes))
+
+n_val_exprs <- val_exprs %>% nrow()
+n_one_node <- val_exprs %>% filter(avg_ast_nodes == 1) %>% nrow()
+
+
+overview_table(
+  r("val one node", n_one_node),
+  r("val one node percent", ratio(n_one_node, n_val_exprs))
+)
+```
+
+Are the sites resolving to just a value well covered?
+
+```{r}
+med_runs <- median(val_exprs$nb_runs, na.rm = TRUE)
+avg_runs <- mean(val_exprs$nb_runs, na.rm = TRUE)
+sd_runs <- sd(val_exprs$nb_runs, na.rm = TRUE)
+
+overview_table(
+  r("one val median runs", med_runs),
+  r("one val average runs", avg_runs),
+  r("one val sd runs", sd_runs)
+)
+```
+
+
+Is there a correlation between the number of caller srcref and the presence of other minimized expressions for one call site?
+
+There are many `NA` caller srcref, so we count them as 1 currently...
+
+```{r eval = FALSE}
+val_exprs_comb <- val_exprs %>% left_join(main_types, by="src_ref")  %>%
+  mutate(calls_per_run = nb_calls / nb_runs) %>%
+  mutate(calls_per_site = nb_calls / nb_caller_srcref) %>%
+  mutate(calls_per_site_per_run = nb_calls / nb_runs / nb_caller_srcref)
+# normalization to be able to see both on the same graph
+
+val_exprs_comb %>% ggplot(aes(x = nb_caller_srcref, y = nb_types)) + 
+  geom_jitter(alpha = 0.3) +
+  scale_x_log10()
+
+val_exprs_comb %>% ggplot(aes(x = nb_runs, y = nb_types)) + 
+  geom_jitter(alpha = 0.3) +
+  scale_x_log10()
+
+val_exprs_comb %>% ggplot(aes(x = calls_per_run, y = nb_types)) + 
+  geom_jitter(alpha = 0.3) +
+  scale_x_log10()
+
+val_exprs_comb %>% ggplot(aes(x = calls_per_site, y = nb_types)) + 
+  geom_jitter(alpha = 0.3) +
+  scale_x_log10()
+
+val_exprs_comb %>% ggplot(aes(x = calls_per_site_per_run, y = nb_types)) + 
+  geom_jitter(alpha=0.3) +
+  scale_x_log10()
+
+val_exprs_comb %>% ggplot(aes(x = nb_caller_exprs, y = nb_types)) + 
+  geom_jitter(alpha=0.3) +
+  scale_x_log10()
+
+df <- val_exprs_comb %>% select(where(is.numeric))
+
+df %>% correlate(method = "spearman") %>% network_plot()
+df %>% correlate(method = "spearman") %>% rplot() + theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+```
+
+
+Manual inspection of the source code shows that there are actually some call sites that take actual values.
+If a site is exercised by many caller sites, or by many different runs, and has only values, then we reckon it is probably a _useless_ `eval`...
+
+```{r}
+val_only <- val_exprs %>% right_join(only_actual_values, by = c("src_ref", "nb_runs"))
+
+max_val_runs <- val_only %>% filter(nb_caller_exprs == max(nb_caller_exprs)) #it happens to also be the one with the most caller expressions
+
+
+val_only %>% filter(nb_caller_exprs > 5) # those ones are likely to be useless eval
+```
+
+
+And the results of the manual inspection:
+
+```{r, include=FALSE}
+useful_percent <- 0
+```
+
+
+```{r, eval=dataset_name == "package"}
+statistic <- function(data, i) {
+  df <- data[i,] %>% select(necessary) %>% filter(necessary)
+  nrow(df) / nrow(data[i,])
+}
+
+bootstrap <- boot(manual_value_necessary, statistic, R = 1000)
+
+#useful_percent <- mean(bootstrap$t, na.rm = TRUE)
+useful_percent <- bootstrap$t0
+
+
+r("useful value eval percent", percent(useful_percent))
+```
+
+`r percent(useful_percent)`% of those `eval` are useful.
+
+We now want to characterize better the sites that are passed a non-default environment. Are they also the sites that can get a value or something with a variable inside?
+
+We compute the sites which are at least one given a `V` minimized expression. Then we look at whether they are passed the default envir or not, and if there are variables in:
+
+```{r}
+minimized_sites <- E_cano %>% semi_join(val_exprs, by="src_ref") %>% group_by(src_ref) %>% 
+  summarize(has_envir = all(!is.na(envir)), has_var = any(has_var, na.rm = TRUE))
+
+non_default_envir <- minimized_sites %>% filter(has_envir)
+
+non_default_with_var <- minimized_sites %>% filter(has_envir, has_var)
+
+overview_table(
+  r("non default envir value percent", ratio(nrow(non_default_envir), nrow(minimized_sites))),
+  r("non default envir with var percent", ratio(nrow(non_default_with_var), nrow(non_default_envir)))
+)
+```
+
+# Accessing a slot
+
+Accessing a slot is done with `$`, `[]` or `[[]]`.
+
+```{r}
+slot_access <- E_cano %>% filter(minimized == "$")
+
+generalized_slot_access <- E_cano %>% filter(has_dollar | has_bracket)
+
+nb_slot_sites <- slot_access %>% pull(src_ref) %>% n_distinct()
+
+nb_generalized_slot_sites <- generalized_slot_access %>% pull(src_ref) %>% n_distinct()
+
+ndefault_envir_slot <- generalized_slot_access %>% filter(!is.na(envir))
+nb_ndefault_envir_slot_sites <- ndefault_envir_slot %>% pull(src_ref) %>% n_distinct()
+
+
+overview_table(
+  r("nb slot access", nb_slot_sites),
+  r("slot access percent", ratio(nb_slot_sites, nb_call_sites)),
+  r("generalized slot access", nb_generalized_slot_sites),
+  r("generalized slot access percent", ratio(nb_generalized_slot_sites, nb_call_sites)),
+  r("ndefault envir slot site", nb_ndefault_envir_slot_sites),
+  r("ndefault envir slot site percent", ratio(nb_ndefault_envir_slot_sites, nb_generalized_slot_sites))
+)
+```
+
+# Generalized variable access
+
+```{r}
+gen_var <- E_cano %>% filter(minimized %in% c("X", "F(X)", "$"))
+nb_gen_var_sites <- gen_var %>% pull(src_ref) %>% n_distinct()
+
+overview_table(
+  r("generalized var access sites", nb_gen_var_sites),
+  r("generalized var access site percent", ratio(nb_gen_var_sites, nb_call_sites))
+)
+```
+
+
+
+
