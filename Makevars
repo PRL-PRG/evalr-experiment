@@ -14,11 +14,16 @@ RSCRIPT		:= $(R_DIR)/bin/Rscript
 
 # R package dependencies for libraries
 DEPENDENCIES_TXT := dependencies.txt
-DEPENDENCIES := devtools \
+DEPENDENCIES := boot \
+  corrr \
+  devtools \
   digest \
   dplyr \
+  DT \
   fs \
   fst \
+  ggplot2 \
+  ggthemes \
   lubridate \
   magrittr \
   markdown \
@@ -29,11 +34,14 @@ DEPENDENCIES := devtools \
   readr \
   rjson \
   rmarkdown \
+  scales \
   stringr \
   tibble \
   tidyr \
   tidyverse \
-  withr
+  viridis \
+  withr \
+  xtable
 
 DOCKER_IMAGE_NAME            := prlprg/project-evalr:oopsla21
 DOCKER_RSTUDIO_IMAGE_NAME    := fikovnik/rstudio:4.0.2
