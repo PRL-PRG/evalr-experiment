@@ -560,7 +560,13 @@ package-normalization:
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
 
 .PHONY: package-preprocess
-package-preprocess:
+package-preprocess: $(CORPUS) \
+	$(CORPUS_DETAILS) \
+	$(PACKAGE_EVALS_STATIC_CSV) \
+	$(PACKAGE_TRACE_EVAL_STATS) \
+	$(PACKAGE_RUN_STATS) \
+	$(PACKAGE_RUNNABLE_CODE_EVAL_CSV)
+
 	$(ROLLBACK) $(PACKAGE_PREPROCESS_DIR)
 	@$(MAKE) $(PACKAGE_PREPROCESS_FILES)
 	@$(MAKE) $(PACKAGE_NORMALIZED_EXPR_FILE)
@@ -587,7 +593,7 @@ kaggle-trace-eval:
 	@$(MAKE) $(KAGGLE_TRACE_EVAL_FILES)
 
 .PHONY: kaggle-preprocess
-kaggle-preprocess:
+kaggle-preprocess: $(KAGGLE_CORPUS_FILE) $(KAGGLE_KERNELS_CSV) $(KAGGLE_TRACE_EVAL_STATS)
 	$(ROLLBACK) $(KAGGLE_PREPROCESS_DIR)
 	@$(MAKE) $(KAGGLE_PREPROCESS_FILES)
 	@$(MAKE) $(KAGGLE_NORMALIZED_EXPR_FILE)
@@ -611,7 +617,7 @@ base-trace-eval:
 	@$(MAKE) $(BASE_TRACE_EVAL_FILES)
 
 .PHONY: base-preprocess
-base-preprocess:
+base-preprocess: $(BASE_EVALS_STATIC_CSV)
 	$(ROLLBACK) $(BASE_PREPROCESS_DIR)
 	@$(MAKE) $(BASE_PREPROCESS_FILES)
 	@$(MAKE) $(BASE_NORMALIZED_EXPR_FILE)
