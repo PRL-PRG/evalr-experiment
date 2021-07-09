@@ -116,3 +116,4 @@ po/*~
 /tags
 /temp/
 packages-*.txt
+!packages-core.txt
