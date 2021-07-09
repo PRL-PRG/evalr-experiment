@@ -17,8 +17,8 @@ CRAN_SRC_DIR       := $(CRAN_DIR)/extracted
 CRAN_ZIP_DIR       := $(CRAN_DIR)/src/contrib
 R_BIN              := $(R_DIR)/bin/R
 RUN_DIR            := $(PROJECT_BASE_DIR)/run
-RUNR_DIR           := $(CURDIR)/runr
-RUNR_TASKS_DIR     := $(RUNR_DIR)/inst/tasks
+RUNR_DIR           := $(R_DIR)/library/runr
+RUNR_TASKS_DIR     := $(RUNR_DIR)/tasks
 SCRIPTS_DIR        := $(CURDIR)/scripts
 
 # A subset of $(PACKAGES); only packages with call sites to eval
@@ -45,10 +45,10 @@ TIMEOUT       ?= 35m
 BASE_SCRIPTS_TO_RUN_SIZE := 25000
 
 # Tools
-MAP				:= $(RUNR_DIR)/inst/map.sh -j $(JOBS) $(MAP_EXTRA)
+MAP				:= $(RUNR_DIR)/map.sh -j $(JOBS) $(MAP_EXTRA)
 R					:= $(R_DIR)/bin/R
 RSCRIPT		:= $(R_DIR)/bin/Rscript
-MERGE     := $(RSCRIPT) $(RUNR_DIR)/inst/merge-files.R
+MERGE     := $(RSCRIPT) $(RUNR_DIR)/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 CAT       := $(SCRIPTS_DIR)/cat.R
 
