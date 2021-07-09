@@ -50,6 +50,19 @@ DOCKER_R_DYNTRACE_IMAGE_NAME := prlprg/r-dyntrace:r-4.0.2
 # cluster related settings
 SSH_LOGIN_FILE := ssh-login-file
 
+txtbold := $(shell tput bold)
+txtred  := $(shell tput setaf 2)
+txtsgr0 := $(shell tput sgr0)
+
+define LOG
+	@echo -n "$(txtbold)"
+	@echo "----------------------------------------------------------------------"
+	@echo "=> $(txtred)$(1)$(txtsgr0)"
+	@echo -n "$(txtbold)"
+	@echo "----------------------------------------------------------------------"
+	@echo -n "$(txtsgr0)"
+endef
+
 .PHONY: $(DEPENDENCIES_TXT)
 $(DEPENDENCIES_TXT):
 	@echo $(DEPENDENCIES) | tr ' ' '\n' > $(DEPENDENCIES_TXT)

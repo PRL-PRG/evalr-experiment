@@ -163,19 +163,6 @@ KAGGLE_TRACE_EVAL_REFLECTION := $(KAGGLE_TRACE_EVAL_DIR)/reflection.fst
 # MACROS
 ########################################################################
 
-txtbold := $(shell tput bold)
-txtred  := $(shell tput setaf 2)
-txtsgr0 := $(shell tput sgr0)
-
-define LOG
-	@echo -n "$(txtbold)"
-	@echo "----------------------------------------------------------------------"
-	@echo "=> $(txtred)$(1)$(txtsgr0)"
-	@echo -n "$(txtbold)"
-	@echo "----------------------------------------------------------------------"
-	@echo -n "$(txtsgr0)"
-endef
-
 define PKG_INSTALL_FROM_FILE
 	$(call LOG,Installing packages from file: $(1))
 	$(R) --quiet --no-save -e 'install.packages(if (Sys.getenv("FORCE_INSTALL")=="1") readLines("$(1)") else setdiff(readLines("$(1)"), installed.packages("$(R_LIBS)")[,1]), dependencies=TRUE, repos="$(CRAN_MIRROR)", destdir="$(CRAN_ZIP_DIR)", Ncpus=$(JOBS))'
