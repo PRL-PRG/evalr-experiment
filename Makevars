@@ -28,7 +28,7 @@ DEPENDENCIES := devtools \
   tidyverse \
   withr
 
-DOCKER_IMAGE_NAME            := prlprg/project-evalr
+DOCKER_IMAGE_NAME            := prlprg/project-evalr:oopsla21
 DOCKER_RSTUDIO_IMAGE_NAME    := fikovnik/rstudio:4.0.2
 DOCKER_R_DYNTRACE_IMAGE_NAME := prlprg/r-dyntrace:r-4.0.2
 
