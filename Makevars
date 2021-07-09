@@ -50,5 +50,6 @@ DOCKER_R_DYNTRACE_IMAGE_NAME := prlprg/r-dyntrace:r-4.0.2
 # cluster related settings
 SSH_LOGIN_FILE := ssh-login-file
 
+.PHONY: $(DEPENDENCIES_TXT)
 $(DEPENDENCIES_TXT):
 	@echo $(DEPENDENCIES) | tr ' ' '\n' > $(DEPENDENCIES_TXT)
