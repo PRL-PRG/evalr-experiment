@@ -1,9 +1,16 @@
 # -*- mode: makefile -*-
-PROJECT_BASE_DIR ?= $(CURDIR)
+PROJECT_BASE_DIR  = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 CRAN_DIR         ?= $(PROJECT_BASE_DIR)/CRAN
 R_DIR            ?= $(PROJECT_BASE_DIR)/R-dyntrace
 R_LIBS           ?= $(PROJECT_BASE_DIR)/library
+R_BIN            := $(R_DIR)/bin/R
 CRAN_MIRROR      := https://cloud.r-project.org
+
+RUN_DIR            := $(PROJECT_BASE_DIR)/run
+PREPROCESS_DIR     := $(RUN_DIR)/preprocess
+
+R					:= $(R_DIR)/bin/R
+RSCRIPT		:= $(R_DIR)/bin/Rscript
 
 # R package dependencies for libraries
 DEPENDENCIES_TXT := dependencies.txt

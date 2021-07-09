@@ -15,8 +15,6 @@ PACKAGES_CORE_FILE := packages-core.txt
 CRAN_LOCAL_MIRROR  := file://$(CRAN_DIR)
 CRAN_SRC_DIR       := $(CRAN_DIR)/extracted
 CRAN_ZIP_DIR       := $(CRAN_DIR)/src/contrib
-R_BIN              := $(R_DIR)/bin/R
-RUN_DIR            := $(PROJECT_BASE_DIR)/run
 RUNR_DIR           := $(R_DIR)/library/runr
 RUNR_TASKS_DIR     := $(RUNR_DIR)/tasks
 SCRIPTS_DIR        := $(CURDIR)/scripts
@@ -46,8 +44,6 @@ BASE_SCRIPTS_TO_RUN_SIZE := 25000
 
 # Tools
 MAP				:= $(RUNR_DIR)/map.sh -j $(JOBS) $(MAP_EXTRA)
-R					:= $(R_DIR)/bin/R
-RSCRIPT		:= $(R_DIR)/bin/Rscript
 MERGE     := $(RSCRIPT) $(RUNR_DIR)/merge-files.R
 ROLLBACK  := $(SCRIPTS_DIR)/rollback.sh
 CAT       := $(SCRIPTS_DIR)/cat.R
@@ -426,7 +422,6 @@ $(KAGGLE_TRACE_EVAL_FILES): $(KAGGLE_TRACE_EVAL_STATS)
 # PREPROCESS
 ########################################################################
 PREPROCESS_TYPE ?= "all"
-PREPROCESS_DIR  := $(RUN_DIR)/preprocess
 
 PACKAGE_PREPROCESS_DIR			:= $(PREPROCESS_DIR)/package
 PACKAGE_SUM_FILE						:= $(PACKAGE_PREPROCESS_DIR)/summarized.fst
