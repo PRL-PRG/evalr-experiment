@@ -440,7 +440,8 @@ overview_table(
 ```{r echo=FALSE}
 E %>%
   filter(opcodes > 50) %>%
-  ggplot(aes(x = "", y = opcodes), na.rm = TRUE) +
+  mutate(x="") %>%
+  ggplot(aes(x = x, y = opcodes), na.rm = TRUE) +
   geom_violin(trim = FALSE, width = 1, fill = "blue", alpha = 0.3) +
   scale_y_log10(labels = scales::comma) +
   labs(y = "", x = "") +
@@ -454,7 +455,8 @@ ggsave_prefix("events_per_pack_large.pdf")
 E %>%
   filter(opcodes > 0) %>% # == 0 if from eval.parent, because we do not count eval loops for it
   filter(opcodes <= 50) %>%
-  ggplot(aes(x = "", y = opcodes), na.rm = TRUE) +
+  mutate(x="") %>%
+  ggplot(aes(x = x, y = opcodes), na.rm = TRUE) +
   geom_violin(trim = FALSE, width = 1.7, fill = "blue", alpha = 0.3) +
   labs(y = "Instructions", x = "") +
   theme(legend.position = "none", text = element_text(size=25)) 
