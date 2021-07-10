@@ -87,7 +87,9 @@ A common problem with a newly installed docker is a missing permission. If you
 got the following error:
 
 ```
-Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get http://%2Fvar%2Frun%2Fdocker.sock/v1.24/containers/json: dial unix /var/run/docker.sock: connect: permission denied
+Got permission denied while trying to connect to the Docker daemon socket at
+unix:///var/run/docker.sock: Get http://%2Fvar%2Frun%2Fdocker.sock/v1.24/containers/json:
+dial unix /var/run/docker.sock: connect: permission denied
 ```
 
 Simply add your username into the `docker` group (e.g. `sudo usermod -a -G docker <username>`)
@@ -257,9 +259,19 @@ Among others, it will do the following:
 - Runs the package code while tracing the calls to `eval` (*package-trace-eval*)
 
 For each of the longer running task, there should be a progress bar which shows
-an estimate remaining time. Allow at least 15 minutes.
+an estimate remaining time. Allow at least 15 minutes. By the end it should
+finish with something like:
 
-After make finishes, there should a new `run` directory with the following content:
+```
+...
+----------------------------------------------------------------------
+=> MERGING provenances.fst
+----------------------------------------------------------------------
+...
+make[1]: Leaving directory '/home/krikava/Research/Projects/evalR/artifact'
+```
+
+After it finishes, there should a new `run` directory with the following content:
 
 ```
 run
@@ -415,7 +427,8 @@ There are two results:
 You can view the files from your machine. Please note that all the data are
 base on just a single-package corpus and thus some metric are not relevant.
 
-The following is the list of the results that we include in the paper:
+The following is the list of the results that we include in the paper (the
+figure/table headings should be click-able links):
 
 ---
 
@@ -510,7 +523,8 @@ To redo the same experiment as we report in the submitted paper, one only needs
 to get all CRAN packages and put them in the `packages.txt` file.
 
 ```sh
-R -q --slave -e 'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")'
+R -q --slave -e \
+  'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")'
 ```
 
 However, the experiment is rather lengthy, in our cluster of three servers,
@@ -527,7 +541,9 @@ For example:
 1. Create a corpus of 10 randomly selected CRAN packages
 
     ```sh
-    R -q --slave -e 'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")' | shuf -n 10 > packages.txt
+    R -q --slave -e \
+      'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")' | \
+      shuf -n 10 > packages.txt
     ```
 
 1. Install the packages
