@@ -623,13 +623,17 @@ very same structure as before. The following are links for convenience.
 
 **NOTEBOOKS**
 
-  - [`corpus.html`](run/analysis/corpus.html) is mostly used for Section
+  - [`corpus.html`](run-submission/analysis/corpus.html) is mostly used for Section
     3.1.
-  - [`normalized.html`](run/analysis/normalized.html) is used for Section
+  - [`normalized.html`](run-submission/analysis/normalized.html) is used for Section
     5.1.
-  - [`package-usage.html`](run/analysis/package-usage.html) contains data for
+  - [`package-usage.html`](run-submission/analysis/package-usage.html) contains data for
     the CRAN dataset and is used for Section 4, 5.1, 5.2 and 5.3.
-  - [`side-effects.html`](run/analysis/side-effects.html) provides data for
+  - [`base-usage.html`](run-submission/analysis/package-usage.html) contains data for
+    the base dataset and is used primarily for Section 4.
+  - [`kaggle-usage.html`](run-submission/analysis/package-usage.html) contains data for
+    the Kaggle dataset and is used primarily for Section 4.
+  - [`side-effects.html`](run-submission/analysis/side-effects.html) provides data for
     Section 5.4.
 
 **FIGURES**
