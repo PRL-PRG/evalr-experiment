@@ -635,8 +635,8 @@ very same structure as before. The following are links for convenience.
 **FIGURES**
 
 - [Figure 3](run-submission/analysis/paper/img/pkgs-eval-callsites-hist.pdf): CRAN `eval` call sites
-- [Figure 4]
-- [Figure 5]
+- [Figure 4]():
+- [Figure 5]():
 - [Figure 6](run-submission/analysis/paper/img/traced-eval-callsites.pdf): `eval` call sites coverage
 - [Figure 7a]: Normalized calls - all
 - [Figure 7b](run-submission/analysis/paper/img/package_calls_per_run_per_call_site.pdf): Normalized calls - small
@@ -658,8 +658,4 @@ very same structure as before. The following are links for convenience.
 - [Table 8](run-submission/analysis/side-effects.html#table_se_types): Types of `eval` side-effects
 
 ---
-
-### How does it work (*optional*)
-
-TODO
 
