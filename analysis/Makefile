@@ -1,6 +1,6 @@
 include ../Makevars
 
-OUTPUT_DIR := output
+OUTPUT_DIR := $(RUN_DIR)/analysis
 
 define RMD
 	-@mkdir -p $(OUTPUT_DIR)
