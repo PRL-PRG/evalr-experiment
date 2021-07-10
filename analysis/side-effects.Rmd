@@ -35,17 +35,22 @@ source("inc/paths.R")
 create_tags(path(TAGS_DIR, "side-effects.tex"), prefix = "SE", default = TRUE)
 ```
 
+## Data loading
+
 ```{r load data}
 SE_all <- read_fst(PACKAGE_SIDE_EFFECTS_FILE) %>% 
   as_tibble %>%
   filter(transitive==0)
 ```
 
+Filter out missing calls.
+
 ```{r missing calls}
 SE_missing_eval_call <- filter(SE_all, is.na(eval_function))
 SE_all <- filter(SE_all, !is.na(eval_function))
 ```
 
+Fix known missing eval source code references.
 
 ```{r deal with empty srcrefs}
 SE <- mutate(SE_all, eval_call_srcref=case_when(
@@ -59,31 +64,40 @@ SE_missing_sites <- filter(SE, eval_call_srcref=="???")
 SE <- filter(SE, eval_call_srcref!="???")
 ```
 
+Remove the side effects that happen to `.Random.seed` unless it comes from the actual call to `set.seed`.
 
 ```{r remove Random.seed}
 SE_random_seed <- filter(SE, variable == ".Random.seed", !str_detect(expr_resolved, "set.seed"))
 SE <- filter(SE, variable != ".Random.seed" | str_detect(expr_resolved, "set.seed"))
 ```
 
+Remove side effects from R internal use of eval.
+
 ```{r remove internal}
 SE_internal <- filter(SE, str_starts(source, fixed("internal:")))
 SE <- filter(SE, !str_starts(source, fixed("internal:")))
 ```
 
+Load eval call sites.
+
 ```{r load static evals}
 ES <- read_csv(PACKAGE_EVALS_STATIC_FILE) %>% rename(eval_call_srcref=srcref)
 ```
 
+Load summarized eval calls.
+
 ```{r load summarize data}
 S <- read_fst(PACKAGE_SUM_CALLS_FILE) %>% as_tibble
 ```
+
+Load corpus details.
 
 ```{r}
 CRAN <- read_fst(PACKAGE_CORPUS_FILE) %>% as_tibble
 PKG <- filter(CRAN, in_corpus) 
 ```
 
-TODO: fix the srcrefs and caller packages / functions
+Normalize callers based on the synthesized eval call site source reference.
 
 ```{r}
 SE <- mutate(
@@ -98,8 +112,9 @@ S <- mutate(
 )
 ```
 
-
 ## Overview
+
+The following computes the overall information about side effects done in eval calls.
 
 ```{r}
 S_calls <- sum(S$nb_ev_calls)
@@ -166,6 +181,8 @@ overview_table(
 
 ## Classification
 
+The following classifies the side effects:
+
 ```{r functions}
 SE <- mutate(
   SE, 
@@ -209,7 +226,6 @@ sites_envir <-
   ungroup()
 ```
 
-
 ```{r}
 sites_not_in_envir <- filter(sites_envir, in_envir==0)
 sites_in_envir <- filter(sites_envir, in_envir==1)
@@ -240,21 +256,6 @@ sum_sites_classes <-
   ) %>% 
   arrange(desc(o)) %>%
   select(-cp, -o)
-
-# sum_sites_classes %>%
-#   mutate(classes=if_else(classes=="multiple", "\\emph{multiple}", classes)) %>%
-#   xtable(
-#     align="llrr",
-#   ) %>%
-#   print(
-#     file=file.path(TAGS_DIR, "table-top-sites-classes-se.tex"),
-#     comment=FALSE, 
-#     include.colnames=FALSE,
-#     include.rownames=FALSE,
-#     only.contents=TRUE,
-#     sanitize.text.function=identity,
-#     timestamp=FALSE
-#  )
 ```
 
 ```{r}
@@ -264,7 +265,6 @@ overview_table(
   r("Sites in one class", percent(filter(sites_class_n, n_class==1)$p/100))
 )
 ```
-
 
 ## Function classification
 
@@ -288,7 +288,6 @@ funs_cov <-
   summarize(cov=sum(hit)/n())
 
 funs_classes <- 
-#  semi_join(funs_srcrefs, filter(funs_cov, cov==1), by="fun") %>%
   semi_join(funs_srcrefs, funs_cov, by="fun") %>%
   group_by(fun) %>%
   summarize(
@@ -314,36 +313,36 @@ sum_funs_classes <-
     ) %>% 
     arrange(desc(o)) %>%
     select(-cp, -o)
-
-# sum_funs_classes %>%
-#   mutate(classes=if_else(classes=="multiple", "\\emph{multiple}", classes)) %>%
-#   xtable(
-#     align="llrr",
-#   ) %>% 
-#   print(
-#     file=file.path(TAGS_DIR, "table-top-sites-classes-funs.tex"),
-#     comment=FALSE, 
-#     include.colnames=FALSE,
-#     include.rownames=FALSE,
-#     only.contents=TRUE,
-#     sanitize.text.function=identity,
-#     timestamp=FALSE
-#   )
 ```
 
+### Target environments for side-effects <a name="table_se_target_envs" />
+
 ```{r}
-left_join(
-  rename(sum_sites_classes, site_n=n, site_p=p),
-  rename(sum_funs_classes, fun_n=n, fun_p=p)
-) %>%
-  mutate(
-    o=if_else(classes=="multiple", 0L, site_n),
-    classes=if_else(classes=="multiple", "\\emph{multiple}", classes),
-    fun_n=replace_na(fun_n, "0"),
-    fun_p=replace_na(fun_p, "0\\%"),
+table_se_target_envs <- 
+  left_join(
+    rename(sum_sites_classes, site_n=n, site_p=p),
+    rename(sum_funs_classes, fun_n=n, fun_p=p)
   ) %>%
-  arrange(desc(o)) %>%
-  select(-o) %>%
+    mutate(
+      o=if_else(classes=="multiple", 0L, site_n),
+      classes=if_else(classes=="multiple", "\\emph{multiple}", classes),
+      fun_n=replace_na(fun_n, "0"),
+      fun_p=replace_na(fun_p, "0\\%"),
+    ) %>%
+    arrange(desc(o)) %>%
+    select(-o)
+```
+
+Table:
+
+```{r}
+datatable(table_se_target_envs)
+```
+
+Saving to tex:
+
+```{r}
+table_se_target_envs %>%
   xtable(
     align="llrrrr"
   ) %>%
@@ -358,27 +357,41 @@ left_join(
   )
 ```
 
+### Types of eval side-effects <a name="table_se_types" />
+
 ```{r}
 event <- cs_count(SE, event, wt=N)
 event_calls <- cs_count(SE, event)
 event_site <- cs_count(SE, eval_call_srcref, event) %>% cs_count(event)
 
-left_join(
-  select(event, event, n_event=n, p_event=p),
-  select(event_calls, event, n_call=n, p_call=p),
-  by="event"
-) %>%
-  left_join(
-    select(event_site, event, n_site=n, p_site=p),
+table_se_types <- left_join(
+    select(event, event, n_event=n, p_event=p),
+    select(event_calls, event, n_call=n, p_call=p),
     by="event"
-  ) %>% 
-  mutate(event=case_when(
-    event=="def" ~ "definition",
-    event=="asn" ~ "update",
-    event=="rvl" ~ "removal"
-  )) %>%
-  mutate_if(is.double, ~fmt(., suffix="%", digit=0)) %>%
-  mutate_if(is.integer, ~fmt(.)) %>%
+  ) %>%
+    left_join(
+      select(event_site, event, n_site=n, p_site=p),
+      by="event"
+    ) %>% 
+    mutate(event=case_when(
+      event=="def" ~ "definition",
+      event=="asn" ~ "update",
+      event=="rvl" ~ "removal"
+    )) %>%
+    mutate_if(is.double, ~fmt(., suffix="%", digit=0)) %>%
+    mutate_if(is.integer, ~fmt(.))
+```
+
+Table:
+
+```{r}
+datatable(table_se_types)
+```
+
+Saving to tex:
+
+```{r}
+table_se_types %>%
   xtable(
     align="llrrrrrr"
   ) %>%
@@ -392,6 +405,8 @@ left_join(
   )
 ```
 
+### Events
+
 ```{r}
 event_rvl_class <- filter(SE, event=="rvl") %>% cs_count(class)
 
@@ -402,7 +417,7 @@ overview_table(
 )
 ```
 
-## Types
+## SEXP types analysis
 
 ```{r}
 SEXP_TYPES <- tribble(
@@ -516,47 +531,4 @@ overview_table(
 )
 ```
 
-
-## Side effects with norm
-
-```{r eval=F}
-NE <- read_csv(
-  PACKAGE_NORMALIZED_EXPRESSION_FILE,
-  col_types = cols(
-    minimized = col_character(),
-    topcall = col_character(),
-    is_model = col_double(),
-    has_fundef = col_double(),
-    has_calls = col_double(),
-    has_assigns = col_double(),
-    has_var = col_double(),
-    has_bracket = col_double(),
-    is_assign = col_double(),
-    is_value = col_double(),
-    is_ignore = col_double(),
-    has_dollar = col_double(),
-    has_user_call = col_double(),
-    has_block = col_double(),
-    has_meta_op = col_double(),
-    normalized = col_character(),
-    trimmed = col_character(),
-    hash = col_character()
-  )
-) %>%
-  select(
-    minimized,
-    topcall,
-    normalized,
-    expr_resolved_hash=hash
-  )
-```
-
-```{r eval=F}
-C <- read_fst(path(PACKAGE_DATA_DIR, "calls-sub.fst")) %>% as_tibble
-CSE <- left_join(
-  C,
-  select(SE, cid, event, class, N),
-  by="cid"
-)
-```
 
