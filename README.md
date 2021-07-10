@@ -34,6 +34,9 @@ This document consists of two major sections:
 2. *Detailed instructions* which will guide you through the process of
    reproducing the data presented in the paper.
 
+Reported times were measured on Linux 5.12 laptop with Intel i7-7560U @ 2.40GHz and
+16GB RAM.
+
 ## Not in the artifact
 
 TODO: kaggle
@@ -185,59 +188,151 @@ The dynamic analysis that traces the eval calls is run using:
 make package-trace-eval
 ```
 
-In turn, it will do the following:
+Among others, it will do the following:
 
-1. Getting package metadata
-
-    - `run/package-metadata/functions.csv`
-    - `run/package-metadata/metadata.csv`
-    - `run/package-metadata/revdeps.csv`
-    - `run/package-metadata/sloc.csv`
-
-1. Extracting runnable code from packages
-
-    - `run/package-runnable-code-eval/runnable-code.csv`
-
-1. Getting the list of all eval call sites from package source code
-
-    - `run/package-evals-static/package-evals-static.csv`
-
-1. Creating the final corpus
-
-    - `run/corpus.txt`
-    - `run/corpus.fst`
-
-1. Listing the eval call sites to be traced
-
-    - `run/package-evals-to-trace.txt`
-
-1. Listing the scripts to be run
-
-    - `run/package-scripts-to-run.txt`
-
-1. Running the package code while tracing the calls to eval
-
-    - `run/package-trace-eval/calls.fst`
-    - `run/package-trace-eval/provenances.fst`
-    - `run/package-trace-eval/resolved-expressions.fst`
-    - `run/package-trace-eval/writes.fst`
+- Extracts package metadata (*package-metadata*)
+- Extracts and instruments runnable code from packages (*package-runnable-code-eval*)
+- Finds `eval` call sites from package source code (*package-evals-static*)
+- Runs the package code while tracing the calls to `eval` (*package-trace-eval*)
 
 For each of the longer running task, there should be a progress bar which shows
-an estimate remaining time. Allow at least 20 minutes.
+an estimate remaining time. Allow at least 15 minutes.
+
+After make finishes, there should a new `run` directory with the following content:
+
+```
+run
+├── package-evals-static
+├── package-metadata
+├── package-runnable-code-eval
+├── package-trace-eval
+├── corpus.fst
+├── corpus.txt
+├── package-evals-to-trace.txt
+└── package-scripts-to-run.txt
+```
+
+Each directory contains results for each of the task that was run.
+To quickly check the results of the tracer, you can run:
+
+```sh
+./scripts/parallel-log.R run/package-trace-eval
+```
+
+which should print out something like:
+
+```
+Duration: 183.94 (sec)
+Average job time: 18.15 (sec)
+Number of hosts: 1
+Number of jobs: 39
+Number of success jobs: 39 (100.00%)
+Number of failed jobs: 0 (0.00%)
+
+Exit codes:
+  0:    39 (100.00%)
+```
+
+This says that it successfully ran all 39 extracted R programs in about
+3 minutes (18 seconds average is OK as jobs run in parallel, cf. bellow). We
+will go over the details in the next section.
+
+Notes:
+
+- We use [GNU parallel](https://www.gnu.org/software/parallel/) to run certain
+  tasks in parallel. By default, the number of jobs will equal to the number of
+  available cores. If you want to throttle it down, set the `JOBS` variable to
+  lower number (e.g. `make package-trace-eval JOBS=2`). You can see the current
+  value by running `make info`.
+
+- Next time you run `make package-trace-eval` it will only run the tracer
+  unless `packages.txt` was changed in the meantime which will trigger
+  regeneration of the auxiliary data.
+
+- If anything goes wrong, you can always start from scratch by removing the
+  `run` folder.
 
 ### 6. Run the analysis
 
-TODO: description
+Right now you should have the raw data. Next, we need to preprocess them
+(mostly a data cleanup) and run the actual analysis. The analysis is done in R,
+concretely in a number of [R markdown](https://rmarkdown.rstudio.com/)
+notebooks.
+
+As usual, this is done by make:
 
 ```sh
 make package-analysis
 ```
 
-TODO: results
+First, it will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation and run it (*package-run*) so it can compute the tracer failure rate.
+Next, it will run the analysis, knitting four notebooks.
+It should take about 3 minutes and the results will be in `run/analysis`:
 
-This concludes the first part.
+```
+run/analysis/
+├── paper
+│   ├── img
+│   │   ├── package_calls_per_run_per_call_site.pdf  # Figure 7b
+│   │   ├── package_combination_minimized.pdf
+│   │   ├── package_eval_calls_per_packages.pdf
+│   │   ├── package_events_per_pack_large.pdf        # Figure 9b
+│   │   ├── package_events_per_pack_small.pdf        # Figure 9a
+│   │   ├── package_size_loaded_distribution.pdf     # Figure 8
+│   │   ├── pkgs-eval-callsites-hist.pdf             # Figure 3
+│   │   ├── se-types.pdf
+│   │   └── traced-eval-callsites.pdf                # Figure 6
+│   └── tag
+│       ├── corpus.tex
+│       ├── package_normalized_expr.tex
+│       ├── package_usage_metrics.tex
+│       ├── side-effects.tex
+│       ├── table-se-target-envs.tex                 # Table 7
+│       └── table-se-types.tex                       # Table 8
+├── corpus.html
+├── normalized.html
+├── package-usage.html
+└── side-effects.html
+```
+
+There are two results:
+
+1. The HTML files that contain the actual analysis
+
+    - `corpus.html` is mostly used for Section 3.1.
+    - `normalized.html` is used for Section 5.1.
+    - `package-usage.html` contains data for the CRAN dataset and is used for
+      Section 4, 5.1, 5.2 and 5.3.
+    - `side-effects.html` provides data for Section 5.4.
+
+2. The files generated in the `paper` directory are used for typesetting the
+   paper. The `img` sub-directory contains all the plots included in the paper.
+   The `tag` sub-directory contains latex tables and *tag* files - latex macros
+   for each of the number that is used in the paper.
+
+You can view the files from your machine. Please note that all the data are
+base on just a single-package corpus and thus some metric are not relevant.
+
+If you managed to get this far, you essentially reproduced the findings for
+a single CRAN package. In the next section we will describe the details about
+how does the tracing work, about the infrastructure and finally run a larger
+experiment.
 
 ## Detailed instructions
 
 TODO: which parts of the paper should be reproduced?
 TODO: where to store the data?
+    - `run/package-metadata/functions.csv`
+    - `run/package-metadata/metadata.csv`
+    - `run/package-metadata/revdeps.csv`
+    - `run/package-metadata/sloc.csv`
+    - `run/package-runnable-code-eval/runnable-code.csv`
+    - `run/package-evals-static/package-evals-static.csv`
+    - `run/corpus.txt`
+    - `run/corpus.fst`
+    - `run/package-evals-to-trace.txt`
+    - `run/package-scripts-to-run.txt`
+    - `run/package-trace-eval/calls.fst`
+    - `run/package-trace-eval/provenances.fst`
+    - `run/package-trace-eval/resolved-expressions.fst`
+    - `run/package-trace-eval/writes.fst`
