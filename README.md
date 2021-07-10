@@ -252,6 +252,13 @@ Notes:
 - If anything goes wrong, you can always start from scratch by removing the
   `run` folder.
 
+- The results are either plain text files, CSV files or, for the larger output
+  we use [fst](https://www.fstpackage.org/) format which provides a fast data
+  frame compression based on the Facebook's
+  [zstd](https://github.com/facebook/zstd) library. To view the content of an
+  fst file, you could use the `scripts/cat.R` utility (e.g. `./scripts/cat.R
+  run/package-trace-eval/writes.fst`)
+
 ### 6. Run the analysis
 
 Right now you should have the raw data. Next, we need to preprocess them
@@ -259,15 +266,41 @@ Right now you should have the raw data. Next, we need to preprocess them
 concretely in a number of [R markdown](https://rmarkdown.rstudio.com/)
 notebooks.
 
-As usual, this is done by make:
+First, we run the data preprocessing
+
+```sh
+make package-preprocess
+```
+
+This will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation and run it (*package-run*) so it can compute the tracer failure rate.
+
+It should take about 2 minutes and the results will be in `run/preprocess/package`:
+
+```
+run/preprocess/package
+├── corpus.fst
+├── corpus.txt
+├── Ecano.fst
+├── E.fst
+├── evals-static.csv
+├── normalized-expressions.csv
+├── run-log.csv
+├── runnable-code.csv
+├── side-effects.fst
+├── summarized-externals.fst
+├── summarized.fst
+├── trace-log.csv
+└── undefined.fst
+```
+
+This is the source for the next step, the analysis.
+We will run (knit) four analysis notebooks (from `analysis` folder):
 
 ```sh
 make package-analysis
 ```
 
-First, it will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation and run it (*package-run*) so it can compute the tracer failure rate.
-Next, it will run the analysis, knitting four notebooks.
-It should take about 3 minutes and the results will be in `run/analysis`:
+It should take about a minutes and the results will be in `run/analysis`:
 
 ```
 run/analysis/

@@ -657,15 +657,15 @@ info:
 	$(call INFO,TIMEOUT)
 
 .PHONY: package-analysis
-package-analysis: package-preprocess
+package-analysis:
 	$(MAKE) -C analysis package
 
 .PHONY: base-anlysis
-base-analysis: base-preprocess
+base-analysis:
 	$(MAKE) -C analysis base
 
 .PHONY: analysis
-analysis: preprocess
+analysis:
 	$(MAKE) -C analysis
 
 DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
