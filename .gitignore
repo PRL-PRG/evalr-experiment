@@ -117,3 +117,4 @@ po/*~
 /temp/
 packages-*.txt
 !packages-core.txt
+README.html

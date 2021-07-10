@@ -733,3 +733,8 @@ httpd:
     -p 80:80 \
     -v $(PROJECT_BASE_DIR):/usr/local/apache2/htdocs$(PROJECT_BASE_DIR) \
     httpd:2.4
+
+.PHONY: readme
+readme:
+	$(call ASSERT_NOT_IN_DOCKER)
+	R --quiet --no-save -e 'rmarkdown::render("README.md")'
