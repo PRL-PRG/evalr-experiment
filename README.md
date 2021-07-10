@@ -49,11 +49,14 @@ This document consists of two major sections:
 
 1. *Getting started guide* which will guide you through the process of setting
    the environment and making sure the artifact is functional, and
-2. *Detailed instructions* which will guide you through the process of
+1. *Detailed instructions* which will guide you through the process of
    reproducing the data presented in the paper.
 
 Reported times were measured on Linux 5.12 laptop with Intel i7-7560U @ 2.40GHz and
 16GB RAM.
+
+It is good to get familiar with the methodology that is presented in Section 3
+of the paper.
 
 ## Not in the artifact
 
@@ -76,7 +79,7 @@ It should eventually print `Hello from Docker!`. If it does not, your docker
 environment is not properly configured and the following instructions will not
 work.
 
-A common problem with a newly installed docker are missing permissions. If you
+A common problem with a newly installed docker is a missing permission. If you
 got the following error:
 
 ```
@@ -93,10 +96,15 @@ git clone -b oopsla21 ssh://git@github.com/PRL-PRG/evalr-experiment
 cd evalr-experiment
 ```
 
-**Important: please make sure you use the `oopsla21` branch**
+---
 
-**Important: from now on, all of the commands should be run inside the cloned
-repository!**
+**IMPORTANT**
+
+- **Please make sure you use the `oopsla21` branch.**
+- **From now on, all of the commands should be run inside the cloned
+  repository.**
+
+---
 
 The artifact repository should look like this
 
@@ -177,10 +185,10 @@ experiment.
 
 **NOTE**
 
-The container comes with a very limited set of tools, if you find you are
-missing something, you can install anything from Ubuntu repository using the
-usual: `sudo apt install <package>`. However, keep in mind that the container
-will be removed the moment you exit from the shell prompt.
+- The container comes with a very limited set of tools, if you find you are
+  missing something, you can install anything from Ubuntu repository using the
+  usual: `sudo apt install <package>`. However, keep in mind that the container
+  will be removed the moment you exit from the shell prompt.
 
 ---
 
@@ -223,9 +231,9 @@ The installed packages will be placed in `library` and their sources under
 
 **NOTE**
 
-The `packages.txt` can be edited in both the container (using `vim`) or any
-editor on your local machine as the repository is mounted inside the
-container.
+- The `packages.txt` can be edited in both the container (using `vim`) or any
+  editor on your local machine as the repository is mounted inside the
+  container.
 
 ---
 
