@@ -17,7 +17,6 @@ CRAN_SRC_DIR       := $(CRAN_DIR)/extracted
 CRAN_ZIP_DIR       := $(CRAN_DIR)/src/contrib
 RUNR_DIR           := $(R_DIR)/library/runr
 RUNR_TASKS_DIR     := $(RUNR_DIR)/tasks
-SCRIPTS_DIR        := $(CURDIR)/scripts
 
 # A subset of $(PACKAGES); only packages with call sites to eval
 CORPUS             := $(RUN_DIR)/corpus.txt
@@ -685,8 +684,8 @@ shell:
     --privileged \
     -ti \
     -v $(CURDIR):$(CURDIR) \
-    -v $$(readlink -f $(CRAN_DIR)):$(CRAN_DIR) \
-    -v $$(readlink -f $(R_LIBS)):$(R_LIBS) \
+    -v $$($(READLINK) $(CRAN_DIR)):$(CRAN_DIR) \
+    -v $$($(READLINK) $(R_LIBS)):$(R_LIBS) \
     -e USER_ID=$$(id -u) \
     -e GROUP_ID=$$(id -g) \
     -e R_LIBS=$(R_LIBS) \

@@ -6,11 +6,13 @@ R_LIBS           ?= $(PROJECT_BASE_DIR)/library
 R_BIN            := $(R_DIR)/bin/R
 CRAN_MIRROR      := https://cloud.r-project.org
 
-RUN_DIR            := $(PROJECT_BASE_DIR)/run
-PREPROCESS_DIR     := $(RUN_DIR)/preprocess
+SCRIPTS_DIR      := $(PROJECT_BASE_DIR)/scripts
+RUN_DIR          := $(PROJECT_BASE_DIR)/run
+PREPROCESS_DIR   := $(RUN_DIR)/preprocess
 
 R					:= $(R_DIR)/bin/R
 RSCRIPT		:= $(R_DIR)/bin/Rscript
+READLINK  := $(SCRIPTS_DIR)/readlink.sh
 
 # R package dependencies for libraries
 DEPENDENCIES_TXT := dependencies.txt
