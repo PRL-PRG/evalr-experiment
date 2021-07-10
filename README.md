@@ -13,6 +13,10 @@ output:
     toc: true
     toc_depth: 3
     toc_float: true
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    latex_engine: xelatex
 date: "9.7.2021"
 ---
 

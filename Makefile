@@ -737,4 +737,4 @@ httpd:
 .PHONY: readme
 readme:
 	$(call ASSERT_NOT_IN_DOCKER)
-	R --quiet --no-save -e 'rmarkdown::render("README.md")'
+	R --quiet --no-save -e 'rmarkdown::render("README.md", output_format="all")'
