@@ -39,7 +39,7 @@ JOBS          ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc -a 2>/dev/null |
 # The timeout used for both the individual tasks in GNU parallel and in the run-r-file.sh
 TIMEOUT       ?= 35m
 # Max scripts to run for tracing evals in the base package
-BASE_SCRIPTS_TO_RUN_SIZE := 25000
+BASE_SCRIPTS_TO_RUN_SIZE ?= 25000
 
 # Tools
 MAP				:= $(RUNR_DIR)/map.sh -j $(JOBS) $(MAP_EXTRA)
