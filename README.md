@@ -1,4 +1,22 @@
-# Introduction
+---
+title: "Why We Eval in the Shadown"
+subtitle: "OOPSLA21 Artifact"
+author:
+  - Aviral Goel
+  - Pierre Donat-Bouillud
+  - Filip Krikava
+  - Christoph Kirsch
+  - Jan Vitek
+output:
+  html_document:
+    gallery: false
+    toc: true
+    toc_depth: 3
+    toc_float: true
+date: "9.7.2021"
+---
+
+## Introduction
 
 This is the artifact for the paper *Why We Eval in the Shadows* by Aviral Goel,
 Pierre Donat-Bouillud, Filip Krikava, Christoph Kirsch and Jan Vitek submitted
@@ -39,7 +57,11 @@ Reported times were measured on Linux 5.12 laptop with Intel i7-7560U @ 2.40GHz 
 
 ## Not in the artifact
 
-TODO: kaggle
+In the paper, we provide results by analyzing three corpora: R base libraries
+(*base*), CRAN packages (*CRAN*) and Kaggle kernels (*kaggle*), cf. Section 3.1
+Corpus. Because of the licensing issues, we cannot redistribute neither the
+code nor the data from the Kaggle website. The rest of this document will
+therefore only focus only on base and CRAN.
 
 ## Getting started guide
 
@@ -88,21 +110,30 @@ The artifact repository should look like this
 └── scripts             # utility scripts for the pipeline
 ```
 
-### 2. Pull the docker image that contains all the necessary dependencies
+### 2. Get the docker image
 
-```sh
-docker pull prlprg/project-evalr:oopsla21
-```
+For the ease of use we pack all the dependencies in a docker image. We also use
+the very same image to run the experiment in a cluster to make sure each node
+has the same environment.
 
-This might take a few minutes, the image has ~4GB. Alternatively, you could
-also build the image yourself by issuing
+There are two options to get the image: pull it from the docker hub or build it
+locally.
 
-```sh
-make docker-image
-```
+1. Pulling from docker hub:
 
-Note: building the image takes about an hour as it needs to install a number of
-R packages.
+    ```sh
+    docker pull prlprg/project-evalr:oopsla21
+    ```
+
+    This might take a few minutes, the image has ~4GB.
+
+1. Building the image locally:
+
+    ```sh
+    make docker-image
+    ```
+
+    It takes about an hour as it needs to install a number of R packages.
 
 ### 3. Run the docker container
 
@@ -122,7 +153,13 @@ A few details about how the container is run:
   `/home/alicia/Temp/evalr-experiment`, the current working directory in the
   container will be the same).
 
-**Important: from now on, all of the commands should be run inside this docker container!**
+---
+
+**IMPORTANT**
+
+**From now on, all of the commands should be run inside this docker container!**
+
+---
 
 Issuing `ls` should show the same structure as above with two additional directories:
 
@@ -136,10 +173,16 @@ Issuing `ls` should show the same structure as above with two additional directo
 Right now they are empty. They will be filled as we install packages for the
 experiment.
 
-Note: the container comes with a very limited set of tools, if you find you are
+---
+
+**NOTE**
+
+The container comes with a very limited set of tools, if you find you are
 missing something, you can install anything from Ubuntu repository using the
 usual: `sudo apt install <package>`. However, keep in mind that the container
 will be removed the moment you exit from the shell prompt.
+
+---
 
 ### 4. Create a sample corpus
 
@@ -176,9 +219,15 @@ has been updated in the meantime):
 The installed packages will be placed in `library` and their sources under
 `CRAN/extracted`.
 
-Note: you can edit the `packages.txt` in both the container (using `vim`) or
-any editor on your local machine as the repository is mounted inside the
+---
+
+**NOTE**
+
+The `packages.txt` can be edited in both the container (using `vim`) or any
+editor on your local machine as the repository is mounted inside the
 container.
+
+---
 
 ### 5. Run the eval tracer
 
@@ -237,7 +286,9 @@ This says that it successfully ran all 39 extracted R programs in about
 3 minutes (18 seconds average is OK as jobs run in parallel, cf. bellow). We
 will go over the details in the next section.
 
-Notes:
+---
+
+**NOTE**
 
 - We use [GNU parallel](https://www.gnu.org/software/parallel/) to run certain
   tasks in parallel. By default, the number of jobs will equal to the number of
@@ -259,6 +310,8 @@ Notes:
   fst file, you could use the `scripts/cat.R` utility (e.g. `./scripts/cat.R
   run/package-trace-eval/writes.fst`)
 
+---
+
 ### 6. Run the analysis
 
 Right now you should have the raw data. Next, we need to preprocess them
@@ -274,14 +327,13 @@ make package-preprocess
 
 This will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation and run it (*package-run*) so it can compute the tracer failure rate.
 
-It should take about 2 minutes and the results will be in `run/preprocess/package`:
+It should take about 2 minutes and the results will be in `run/preprocess/package`.
+The content should like like this:
 
 ```
 run/preprocess/package
 ├── corpus.fst
 ├── corpus.txt
-├── Ecano.fst
-├── E.fst
 ├── evals-static.csv
 ├── normalized-expressions.csv
 ├── run-log.csv
@@ -294,7 +346,7 @@ run/preprocess/package
 ```
 
 This is the source for the next step, the analysis.
-We will run (knit) four analysis notebooks (from `analysis` folder):
+We will run (*knit*) four analysis notebooks (from `analysis` folder):
 
 ```sh
 make package-analysis
@@ -332,40 +384,203 @@ There are two results:
 
 1. The HTML files that contain the actual analysis
 
-    - `corpus.html` is mostly used for Section 3.1.
-    - `normalized.html` is used for Section 5.1.
-    - `package-usage.html` contains data for the CRAN dataset and is used for
-      Section 4, 5.1, 5.2 and 5.3.
-    - `side-effects.html` provides data for Section 5.4.
+    - [`corpus.html`](run/analysis/corpus.html) is mostly used for Section
+      3.1.
+    - [`normalized.html`](run/analysis/normalized.html) is used for Section
+      5.1.
+    - [`package-usage.html`](run/analysis/package-usage.html) contains data for
+      the CRAN dataset and is used for Section 4, 5.1, 5.2 and 5.3.
+    - [`side-effects.html`](run/analysis/side-effects.html) provides data for
+      Section 5.4.
 
 2. The files generated in the `paper` directory are used for typesetting the
-   paper. The `img` sub-directory contains all the plots included in the paper.
-   The `tag` sub-directory contains latex tables and *tag* files - latex macros
-   for each of the number that is used in the paper.
+   paper.
+
+   - The `img` sub-directory contains all the plots included in the paper.
+   - The `tag` sub-directory contains latex tables and *tag* files - latex
+     macros for each of the number that is used in the paper.
 
 You can view the files from your machine. Please note that all the data are
 base on just a single-package corpus and thus some metric are not relevant.
 
-If you managed to get this far, you essentially reproduced the findings for
-a single CRAN package. In the next section we will describe the details about
-how does the tracing work, about the infrastructure and finally run a larger
-experiment.
+The following is the list of the results that we include in the paper:
+
+---
+
+**FIGURES**
+
+- [Figure 3](run/analysis/paper/img/pkgs-eval-callsites-hist.pdf): CRAN `eval` call sites
+- [Figure 4]
+- [Figure 5]
+- [Figure 6](run/analysis/paper/img/traced-eval-callsites.pdf): `eval` call sites coverage
+- [Figure 7a]: Normalized calls - all
+- [Figure 7b](run/analysis/paper/img/package_calls_per_run_per_call_site.pdf): Normalized calls - small
+- [Figure 8](run/analysis/paper/img/package_size_loaded_distribution.pdf): Loaded code
+- [Figure 9a](run/analysis/paper/img/package_events_per_pack_small.pdf): Instructions per call - small
+- [Figure 9b](run/analysis/paper/img/package_events_per_pack_large.pdf): Instructions per call - large
+
+---
+
+**TABLES**
+
+- [Table 1]():
+- [Table 2]():
+- [Table 3]():
+- [Table 4]():
+- [Table 5]():
+- [Table 6]():
+- [Table 7](run/analysis/side-effects.html#table_se_target_envs): Target environments for side-effects
+- [Table 8](run/analysis/side-effects.html#table_se_types): Types of `eval` side-effects
+
+---
+
+**Congratulations!** If you managed to get this far, you essentially analyzed
+the use of `eval` for a single CRAN package.
 
 ## Detailed instructions
 
-TODO: which parts of the paper should be reproduced?
-TODO: where to store the data?
-    - `run/package-metadata/functions.csv`
-    - `run/package-metadata/metadata.csv`
-    - `run/package-metadata/revdeps.csv`
-    - `run/package-metadata/sloc.csv`
-    - `run/package-runnable-code-eval/runnable-code.csv`
-    - `run/package-evals-static/package-evals-static.csv`
-    - `run/corpus.txt`
-    - `run/corpus.fst`
-    - `run/package-evals-to-trace.txt`
-    - `run/package-scripts-to-run.txt`
-    - `run/package-trace-eval/calls.fst`
-    - `run/package-trace-eval/provenances.fst`
-    - `run/package-trace-eval/resolved-expressions.fst`
-    - `run/package-trace-eval/writes.fst`
+In this section we provide additional details about how to trace eval calls for
+the R base libraries and how to reproduce the findings presented in the paper.
+
+### Tracing eval calls in base
+
+TODO
+
+### Reproducing paper findings
+
+To redo the same experiment as we report in the submitted paper, one only needs
+to get all CRAN packages and put them in the `packages.txt` file.
+
+```sh
+R -q --slave -e 'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")'
+```
+
+However, the experiment is rather lengthy, in our cluster of three servers,
+each with 2.3GHz Intel Xeon 6140 processor with 72 cores and 256GB of RAM, it
+took over 60 hours. You can also rerun the experiment on a subset of CRAN.
+For example:
+
+1. Clean the run folder
+
+    ```sh
+    rm -fr run
+    ```
+
+1. Create a corpus of 50 randomly selected CRAN packages
+
+    ```sh
+    R -q --slave -e 'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")' | shuf -n 50 > packages.txt
+    ```
+
+1. Install the packages
+
+    ```sh
+    make package-install
+    ```
+
+1. Run the tracer
+
+    ```sh
+    make package-trace-eval
+    ```
+
+1. Run the preprocessing
+
+    ```sh
+    make package-preprocess
+    ```
+
+1. Run the analysis
+
+    ```sh
+    make package-analysis
+    ```
+
+---
+
+**NOTE**
+
+- It might take up to a few hours depending on the selected packages.
+- The final package count might be smaller because some packages could be
+  filtered out because they cannot be installed (missing some native
+  dependencies) or they do not contain R code.
+- R does not provide any mechanism for pinning package versions. This means
+  that even if you try all the CRAN packages, the results could be slightly
+  different from ours as the package evolves. However the general shape should
+  be the same.
+- Clean the `run` folder every time you experiment with a new corpus.
+
+---
+
+As an alternative, we provide the preprocessed data on which you can run the
+analysis.
+
+1. Download the data (~180MB)
+
+    ```sh
+    wget -O run-submission.tar.xz https://owncloud.cesnet.cz/index.php/s/O2ntsqPufhKRObv/download
+    ```
+
+1. Extract the archive (~1.5GB)
+
+    ```sh
+    tar xfvJ run-submission.tar.xz
+    ```
+
+1. Run the analysis using the new full corpus
+
+    This is again done by make. The only thing that we need to change is say
+    that the data are no longer in the `run` directory, but in
+    `run-submission`:
+
+    ```sh
+    make analysis RUN_DIR=$PWD/run-submission
+    ```
+
+The results will be generated in `run-submission/analysis` and they follow the
+very same structure as before. The following are links for convenience.
+
+---
+
+**NOTEBOOKS**
+
+  - [`corpus.html`](run/analysis/corpus.html) is mostly used for Section
+    3.1.
+  - [`normalized.html`](run/analysis/normalized.html) is used for Section
+    5.1.
+  - [`package-usage.html`](run/analysis/package-usage.html) contains data for
+    the CRAN dataset and is used for Section 4, 5.1, 5.2 and 5.3.
+  - [`side-effects.html`](run/analysis/side-effects.html) provides data for
+    Section 5.4.
+
+**FIGURES**
+
+- [Figure 3](run-submission/analysis/paper/img/pkgs-eval-callsites-hist.pdf): CRAN `eval` call sites
+- [Figure 4]
+- [Figure 5]
+- [Figure 6](run-submission/analysis/paper/img/traced-eval-callsites.pdf): `eval` call sites coverage
+- [Figure 7a]: Normalized calls - all
+- [Figure 7b](run-submission/analysis/paper/img/package_calls_per_run_per_call_site.pdf): Normalized calls - small
+- [Figure 8](run-submission/analysis/paper/img/package_size_loaded_distribution.pdf): Loaded code
+- [Figure 9a](run-submission/analysis/paper/img/package_events_per_pack_small.pdf): Instructions per call - small
+- [Figure 9b](run-submission/analysis/paper/img/package_events_per_pack_large.pdf): Instructions per call - large
+
+---
+
+**TABLES**
+
+- [Table 1]():
+- [Table 2]():
+- [Table 3]():
+- [Table 4]():
+- [Table 5]():
+- [Table 6]():
+- [Table 7](run-submission/analysis/side-effects.html#table_se_target_envs): Target environments for side-effects
+- [Table 8](run-submission/analysis/side-effects.html#table_se_types): Types of `eval` side-effects
+
+---
+
+### How does it work (*optional*)
+
+TODO
+
