@@ -49,7 +49,8 @@ ADD $DEPENDENCIES_TXT /tmp/dependencies.txt
 RUN $R_DIR/bin/R -e 'install.packages(readLines("/tmp/dependencies.txt"), dependencies=TRUE, repos=Sys.getenv("CRAN_MIRROR"), Ncpus=parallel::detectCores())'
 
 # install tracer
-RUN $R_DIR/bin/R -e 'devtools::install_github(c("PRL-PRG/injectr", "PRL-PRG/instrumentr", "PRL-PRG/runr", "PRL-PRG/evil"))'
+RUN $R_DIR/bin/R -e 'devtools::install_github(c("PRL-PRG/injectr", "PRL-PRG/instrumentr", "PRL-PRG/runr"))'
+RUN $R_DIR/bin/R -e 'devtools::install_github("PRL-PRG/evil", ref="oopsla21")'
 
 # r user and group - this is the user that will be used to run the experiments
 RUN useradd -u 1000 -m -U -G sudo -s /bin/bash r && \
