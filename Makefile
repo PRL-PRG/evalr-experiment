@@ -666,7 +666,7 @@ base-analysis:
 
 .PHONY: analysis
 analysis:
-	$(MAKE) -C analysis
+	$(MAKE) -C analysis all
 
 DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
 # default shell command

@@ -4,7 +4,7 @@ OUTPUT_DIR := $(RUN_DIR)/analysis
 
 define RMD
 	-@mkdir -p $(OUTPUT_DIR)
-	$(call LOG,RENDERING $(1) into $(2))
+	$(call LOG,RENDERING $(1).Rmd into $(2).html)
 	$(R) --quiet --no-save -e 'rmarkdown::render("$(1).Rmd", output_file="$(OUTPUT_DIR)/$(2).html", params=list(base_dir="$(3)", output_dir="$(OUTPUT_DIR)"))'
 
 endef
