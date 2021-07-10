@@ -442,9 +442,55 @@ the use of `eval` for a single CRAN package.
 In this section we provide additional details about how to trace eval calls for
 the R base libraries and how to reproduce the findings presented in the paper.
 
+For the steps in this section, we assume that you have successfully completed
+all the steps from the getting started guide and are in the bash prompt in the
+docker images (i.e. executed `make shell`).
+
 ### Tracing eval calls in base
 
-TODO
+Next to CRAN, we also report on the use of `eval` in the core packages that are
+part of the R language. The reason why we treat them separately is that they
+are relatively stable, part of the language itself, written by R core
+maintainers and finally, there are relatively few `eval` call sites.
+Nevertheless they are also heavily exercised as there is hardly any R code that
+would execute without calling `eval` from core libraries.
+
+To collect information about the base usage of `eval` we do a isolated run of a
+subset of the extracted programs from CRAN packages while tracing only the
+`eval` call sites presented in core packages.
+
+Reusing the extracted programs from the getting started guide, we can trace
+base using the following:
+
+1. Run the tracer with base evals only
+
+    ```sh
+    make base-trace-eval
+    ```
+
+1. Preprocess base
+
+    ```sh
+    make base-preprocess
+    ```
+
+1. Run the analysis
+
+    ```sh
+    make base-analysis
+    ```
+
+The results is in [`base-usage.html`](run/analysis/base-usage.html).
+
+---
+
+**NOTE**
+
+- The number of programs it will run is controlled by the
+  `BASE_SCRIPTS_TO_RUN_SIZE` environment variable, which is by default 25K. It
+  will therefore run up to that number of programs.
+
+---
 
 ### Reproducing paper findings
 
@@ -466,10 +512,10 @@ For example:
     rm -fr run
     ```
 
-1. Create a corpus of 50 randomly selected CRAN packages
+1. Create a corpus of 10 randomly selected CRAN packages
 
     ```sh
-    R -q --slave -e 'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")' | shuf -n 50 > packages.txt
+    R -q --slave -e 'cat(available.packages(repos="https://cloud.r-project.org")[, 1], sep="\n")' | shuf -n 10 > packages.txt
     ```
 
 1. Install the packages
@@ -481,29 +527,34 @@ For example:
 1. Run the tracer
 
     ```sh
-    make package-trace-eval
+    make package-trace-eval base-trace-eval
     ```
 
 1. Run the preprocessing
 
     ```sh
-    make package-preprocess
+    make package-preprocess base-preprocess
     ```
 
 1. Run the analysis
 
     ```sh
-    make package-analysis
+    make package-analysis base-analysis
     ```
+
+The results will be in the same files as indicated above.
 
 ---
 
 **NOTE**
 
 - It might take up to a few hours depending on the selected packages.
-- The final package count might be smaller because some packages could be
-  filtered out because they cannot be installed (missing some native
-  dependencies) or they do not contain R code.
+- The final package count might be smaller as not all packages use evals. Some
+  packages could also be filtered out because they cannot be installed (missing
+  some native dependencies) or they do not contain R code.
+- By default, there is 35 minutes timeout for all the tasks that run in
+  parallel (e.g., extracting package metadata, running R programs). It can be
+  adjusted by the `TIMEOUT` environment variable.
 - R does not provide any mechanism for pinning package versions. This means
   that even if you try all the CRAN packages, the results could be slightly
   different from ours as the package evolves. However the general shape should
