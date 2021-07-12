@@ -53,7 +53,7 @@ This document consists of two major sections:
 
 1. *Getting started guide* which will guide you through the process of setting
    the environment and making sure the artifact is functional, and
-1. *Detailed instructions* which will guide you through the process of
+1. *Step-by-Step instructions* which will guide you through the process of
    reproducing the data presented in the paper.
 
 Reported times were measured on Linux 5.12 laptop with Intel i7-7560U @ 2.40GHz and
@@ -470,7 +470,7 @@ figure/table headings should be click-able links):
 **Congratulations!** If you managed to get this far, you essentially analyzed
 the use of `eval` for a single CRAN package.
 
-## Detailed instructions
+## Step-by-Step instructions
 
 In this section we provide additional details about how to trace eval calls for
 the R base libraries and how to reproduce the findings presented in the paper.
