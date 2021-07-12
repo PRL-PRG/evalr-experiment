@@ -650,7 +650,7 @@ overview_table(
 )
 ```
 
-<a name="table-function-offset" />
+**Function offset for function environments:** <a name="table-function-offset" />
 
 `r datatable(caller_env_sites)`
 
@@ -715,7 +715,7 @@ r_vec("new env category sites", nrows, high_level_new_sites$n)
 r_vec("new env category site percent", nrows, high_level_new_sites$pc)
 ```
 
-<a name="table-wrapper-envs" />
+**Wrapper environments for synthetic environments:** <a name="table-wrapper-envs" />
 
 `r datatable(high_level_new_sites)`
 
@@ -736,7 +736,7 @@ global_envs <- env_classes %>% filter(is.na(new_env), specific_env == "global")
 nb_strict_global_env_sites <- n_distinct(global_envs$src_ref)
 ```
 
-<a name="table-env-kinds-per-site" />
+**Kinds of environments per site:** <a name="table-env-kinds-per-site" />
 
 ```{r}
 

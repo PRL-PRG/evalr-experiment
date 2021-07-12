@@ -202,7 +202,7 @@ There are `r nb_call_sites` call sites in the dataset.
 # Ranking of normalized and minimized expressions
 
 
-## Normalized: 
+## Normalized expressions: 
 
 ```{r}
 widespread_canonic <- E_cano %>%
@@ -215,7 +215,7 @@ widespread_canonic %>%
 ```
 
 
-## Minimized: <a name="table-minimized-expressions" />
+## Minimized expressions: <a name="table-minimized-expressions" />
 
 ```{r}
 widespread_minimized <- E_cano %>% filter(type != "bytecode") %>% #Only two sites anyway

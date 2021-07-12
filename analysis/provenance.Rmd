@@ -239,7 +239,7 @@ overview_table(
 ```
 
 
-# Final classification <a name = "table-provenances" />
+# Final classification of provenances  <a name = "table-provenances" />
 
 ```{r}
 string_exprs <- E_prov %>% filter(!is.na(parsed))
