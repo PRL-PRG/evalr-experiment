@@ -1,8 +1,8 @@
 ---
 title: "Provenance"
-author: "Pierre Donat-Bouillud"
 output:
   html_document:
+        code_folding: "hide"
         gallery: false
         toc: true
         toc_depth: 3

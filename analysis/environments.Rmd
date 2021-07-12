@@ -1,8 +1,8 @@
 ---
 title: "Environments and eval in R"
-author: "Pierre Donat-Bouillud"
 output:
   html_document:
+        code_folding: "hide"
         gallery: false
         toc: true
         toc_depth: 3
@@ -675,7 +675,7 @@ env_classes %>% filter(!is.na(new_env)) %>% group_by(env_class) %>%
   mutate(pc = ratio(n, nb_call_sites), cpc = cumsum(pc))
 ```
 
-## Synthetic 
+## Synthetic  (wrapper environments)
 
 
 This corresponds to `new` and to `list/NULL/pairlist`:
@@ -782,7 +782,8 @@ r_vec("nb category envir percent", nrows, poly_categories$pc)
 r_vec("nb category envir cumsum percent", nrows, poly_categories$cpc)
 ```
 
-<a name="table-multiplicities-envs" />
+
+**Multiplicities**: <a name="table-multiplicities-envs" />
 
 `r datatable(poly_categories)`
 

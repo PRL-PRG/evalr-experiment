@@ -396,7 +396,7 @@ run/analysis/
 │       ├── package_normalized_expr.tex              # Table 1
 |       ├── package_environments.tex                 # Tables 2, 3, 4, 5
 |       ├── package_provenance.tex                   # Table 6
-│       ├── package_usage_metrics.tex                # Figures 4, 5, 8a
+│       ├── package_usage_metrics.tex                # Figures 4, 5, 7a
 │       ├── side-effects.tex
 │       ├── table-se-target-envs.tex                 # Table 7
 │       └── table-se-types.tex                       # Table 8
