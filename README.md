@@ -26,7 +26,55 @@ This is the artifact for the paper *Why We Eval in the Shadows* by Aviral Goel,
 Pierre Donat-Bouillud, Filip Krikava, Christoph Kirsch and Jan Vitek submitted
 to OOPSLA 2021.
 
-## Prerequisites
+In short, this paper analyzes the use of `eval` function in R code. Using
+`eval` hinders static analysis and prevents compilers from performing
+optimizations. This paper aims to provide a better sense of how much and why
+programmers use `eval` in R. Understanding why `eval` is used in practice is
+key to finding ways to mitigate its negative impact. It is a large-scale study
+of more than 4.5M lines of R code.
+
+### Methodology
+
+To better understand this artifact it is good to get familiar with the
+methodology that is presented in paper's Section 3. The following summarizes
+the main points about the corpus, the pipeline and dynamic analysis that is
+used.
+
+#### Corpus
+
+We look at three different corpora: the packages distributed with
+the R language (*base*), packages from the [CRAN
+repository](https://cran.r-project.org/) which contains the largest collection
+of R packages (*CRAN*), and scripts from the [Kaggle](https://www.kaggle.com/)
+website, an online platform for data science. Details about the corpus can be
+found in the paper in Section 3.1.
+
+
+#### Pipeline
+
+This artifact presents the data analysis pipeline that we have build for this
+paper and used to gather the presented data. Conceptually, it consists of four
+main steps:
+
+1. Download and installs the corpora.
+1. Extracts and instrument all runnable code snippets from the installed
+   packages and Kaggle scripts.
+1. Run the instrumented code capturing all calls to the `eval` function.
+1. Analyze the results.
+
+The pipeline is implemented in a makefile with a few auxiliary scripts in R and
+bash. Details about the pipeline are presented in Section 3.2 of the paper.
+
+#### Dynamic analysis
+
+The main component of the pipeline is an `eval` tracer. It is an R package
+(called `evil`) that uses our dynamic analysis framework to record all calls to
+`eval` at runtime. The framework on top of a modified GNU R 4.0.2 virtual
+machine ([R-dyntrace](https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2)) that
+exposes low-level callbacks for a variety of runtime events. Details about the
+dynamic analysis is in Section 3.3 of the paper.
+
+### Prerequisites
 
 The artifact is packed in a docker image with a makefile that orchestrates
 various tasks. The following are the requirements for getting the image ready
@@ -38,16 +86,53 @@ various tasks. The following are the requirements for getting the image ready
 - GNU Make (4.2.1)
 
 These instructions were tested on a fresh minimal installation of Ubuntu 20.04
-LTS and on OSX (*TODO: version*).
+LTS and on OSX (11.4).
 
-For the fresh Ubuntu installation we installed the requirements using the following:
+For the fresh Ubuntu installation we installed the requirements using the
+following:
 
 ```sh
 sudo apt install git make docker.io
 sudo usermod -a -G docker <username>
 ```
 
-## Organization
+---
+
+**NOTE**
+
+- There seems to be a problem running the artifact on Apple M1 hardware,
+  concretely `pandoc` which is used for rendering the analysis notebooks does
+  not work. The error is only manifested at the end when running the analysis:
+
+    ```
+    ----------------------------------------------------------------------
+    => RENDERING corpus.Rmd into corpus.html
+    ----------------------------------------------------------------------
+    /R/R-dyntrace/bin/R --quiet --no-save -e 'rmarkdown::render("corpus.Rmd", output_file="/Users/ck/evalr-experiment//run/analysis/corpus.html", params=list(base_dir="/Users/ck/evalr-experiment//run/preprocess", output_dir="/Users/ck/evalr-experiment//run/analysis"))'
+    > rmarkdown::render("corpus.Rmd", output_file="/Users/ck/evalr-experiment//run/analysis/corpus.html", params=list(base_dir="/Users/ck/evalr-experiment//run/preprocess", output_dir="/Users/ck/evalr-experiment//run/analysis"))
+    Killed
+    Error in strsplit(info, "\n")[[1]] : subscript out of bounds
+    Calls: <Anonymous> ... pandoc_available -> find_pandoc -> lapply -> FUN -> get_pandoc_version
+    In addition: Warning message:
+    In system(paste(shQuote(path), "--version"), intern = TRUE) :
+      running command ''/usr/bin/pandoc' --version' had status 137
+    Execution halted
+    Makefile:29: recipe for target 'corpus' failed
+    make[1]: *** [corpus] Error 1
+    make[1]: Leaving directory '/Users/ck/evalr-experiment/analysis'
+    Makefile:661: recipe for target 'package-analysis' failed
+    make: *** [package-analysis] Error 2
+    ```
+
+---
+
+### Not in the artifact
+
+Because of the licensing issues, we cannot redistribute neither the code nor
+the data from the Kaggle website. The rest of this document will therefore only
+focus only on base and CRAN corpora. 
+
+### Organization
 
 This document consists of two major sections:
 
@@ -59,16 +144,24 @@ This document consists of two major sections:
 Reported times were measured on Linux 5.12 laptop with Intel i7-7560U @ 2.40GHz and
 16GB RAM.
 
-It is good to get familiar with the methodology that is presented in Section 3
-of the paper.
+### Evaluating the artifact
 
-## Not in the artifact
+The quantitative results in the paper that are the subject of this artifact are
+presented in Section 4 and 5. They are in form of tables and figures as well as
+numbers embedded in the text. All are generated from
+[Rmarkdown](https://rmarkdown.rstudio.com/) notebooks. Concretely, the figures
+are saved into PDF files, tables into TEX files included in the paper and the
+rest of the numbers in another TEX files that use `\newcommand` macros (e.g.,
+`\newcommand{\CranAvailablePackages}{15,962\xspace}`). In the relevant sections
+we provide concrete links to all the figures and tables.
 
-In the paper, we provide results by analyzing three corpora: R base libraries
-(*base*), CRAN packages (*CRAN*) and Kaggle kernels (*kaggle*), cf. Section 3.1
-Corpus. Because of the licensing issues, we cannot redistribute neither the
-code nor the data from the Kaggle website. The rest of this document will
-therefore only focus only on base and CRAN.
+The paper presents a large scale study using over 15K CRAN packages. Redoing
+the very same experiment is a resource intensive task. It took over 60 hours on
+a cluster of 3 servers (cf. Figure 2 in the paper). While you are free to do
+the same, we do not expect you to redo the entire experiment. Instead we
+provide a preprocessed data so you could run just the data analysis. However,
+the artifact should work on any number of CRAN packages, so feel free to
+experiment as you find fit.
 
 ## Getting started guide
 
@@ -116,6 +209,7 @@ The artifact repository should look like this
 
 ```sh
 .
+├── analysis            # Rmarkdown notebooks used for analysis
 ├── docker-image        # docker image source code
 ├── Makefile            # data analysis pipeline
 ├── Makevars            # basic pipeline configuration
@@ -470,6 +564,8 @@ figure/table headings should be click-able links):
 **Congratulations!** If you managed to get this far, you essentially analyzed
 the use of `eval` for a single CRAN package.
 
+**Thank you for evaluating the artifact!**
+
 ## Step-by-Step instructions
 
 In this section we provide additional details about how to trace eval calls for
@@ -600,7 +696,7 @@ The results will be in the same files as indicated above.
 ---
 
 As an alternative, we provide the preprocessed data on which you can run the
-analysis.
+analysis. This took 40 minutes.
 
 1. Download the data (~180MB)
 
