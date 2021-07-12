@@ -337,6 +337,7 @@ make: *** [package-analysis] Error 2</code></pre></li>
 <h3>Evaluating the artifact</h3>
 <p>The quantitative results in the paper that are the subject of this artifact are presented in Sections 4 and 5. They are in form of tables and figures as well as numbers embedded in the text. All are generated from <a href="https://rmarkdown.rstudio.com/">R markdown</a> notebooks. Concretely, the figures are saved into PDF files, tables into TEX files included in the paper, and the rest of the numbers also in TEX files that use <code>\newcommand</code> macros (e.g., <code>\newcommand{\CranAvailablePackages}{15,962\xspace}</code>). In the relevant sections, we provide concrete links to all the figures and tables.</p>
 <p>The paper presents a large-scale study using over 15K CRAN packages. Redoing the very same experiment is a resource-intensive task. It took over 60 hours on a cluster of 3 servers (cf. Figure 2 in the paper). While you are free to do the same, we do not expect you to redo the entire experiment. Instead, we provide a preprocessed data so you could run just the data analysis. However, the artifact should work on any number of CRAN packages, so feel free to experiment as you find fit.</p>
+<p>In the <a href="https://github.com/PRL-PRG/evalr-experiment/tree/oopsla21">artifact repository</a> this document is also available in HTML and PDF. The HTML is preferred as it contains visible links for the individual results (figures and tables).</p>
 </div>
 </div>
 <div id="getting-started-guide" class="section level2">
@@ -641,7 +642,7 @@ Exit codes:
 <hr />
 <p>As an alternative, we provide the preprocessed data on which you can run the analysis. This is the result of running:</p>
 <pre><code>make package-preprocess base-preprocess kaggle-preprocess</code></pre>
-<p>on the entire corpus.</p>
+<p>on the entire corpus. The analysis itself takes about 40 minutes.</p>
 <ol style="list-style-type: decimal">
 <li><p>Download the data (~180MB)</p>
 <pre class="sh"><code>wget -O run-submission.tar.xz https://owncloud.cesnet.cz/index.php/s/O2ntsqPufhKRObv/download</code></pre></li>

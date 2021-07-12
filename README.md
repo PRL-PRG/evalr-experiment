@@ -165,7 +165,9 @@ provide a preprocessed data so you could run just the data analysis. However,
 the artifact should work on any number of CRAN packages, so feel free to
 experiment as you find fit.
 
-This document is available in HTML and PDF. The HTML is preferred as it
+In the [artifact
+repository](https://github.com/PRL-PRG/evalr-experiment/tree/oopsla21) this
+document is also available in HTML and PDF. The HTML is preferred as it
 contains visible links for the individual results (figures and tables).
 
 ## Getting started guide
