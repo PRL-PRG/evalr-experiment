@@ -102,7 +102,8 @@ sudo usermod -a -G docker <username>
 
 - There seems to be a problem running the artifact on Apple M1 hardware,
   concretely `pandoc` which is used for rendering the analysis notebooks does
-  not work. The error is only manifested at the end when running the analysis:
+  not work (cf. [#6960](https://github.com/jgm/pandoc/issues/6960)). The error
+  is only manifested at the end when running the analysis:
 
     ```
     ----------------------------------------------------------------------
@@ -245,11 +246,18 @@ locally.
 
 ### 3. Run the docker container
 
-The pipeline will run inside the docker container.
-The following will spawn a new docker container giving you a bash prompt in the directory that contains the repository:
+The pipeline will run inside the docker container. The following will spawn
+a new docker container giving you a bash prompt in the directory that contains
+the repository:
 
 ``` sh
 make shell
+```
+
+On Apple M1 you might need to run:
+
+```sh
+make shell SHELL_EXTRA='--platform linux/amd64'
 ```
 
 A few details about how the container is run:
