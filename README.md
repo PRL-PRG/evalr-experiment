@@ -370,7 +370,7 @@ run/preprocess/package
 ```
 
 This is the source for the next step, the analysis.
-We will run (*knit*) four analysis notebooks (from `analysis` folder):
+We will run (*knit*) six analysis notebooks (from `analysis` folder):
 
 ```sh
 make package-analysis
