@@ -165,6 +165,9 @@ provide a preprocessed data so you could run just the data analysis. However,
 the artifact should work on any number of CRAN packages, so feel free to
 experiment as you find fit.
 
+This document is available in HTML and PDF. The HTML is preferred as it
+contains visible links for the individual results (figures and tables).
+
 ## Getting started guide
 
 In this section, we will go through the steps of getting the artifact up and running.
@@ -711,7 +714,7 @@ analysis. This is the result of running:
 make package-preprocess base-preprocess kaggle-preprocess
 ```
 
-on the entire corpus.
+on the entire corpus. The analysis itself takes about 40 minutes.
 
 1. Download the data (~180MB)
 
