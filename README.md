@@ -26,7 +26,7 @@ This is the artifact for the paper *Why We Eval in the Shadows* by Aviral Goel,
 Pierre Donat-Bouillud, Filip Krikava, Christoph Kirsch and Jan Vitek submitted
 to OOPSLA 2021.
 
-In short, this paper analyzes the use of `eval` function in R code. Using
+In short, this paper analyzes the use of the `eval` function in R code. Using
 `eval` hinders static analysis and prevents compilers from performing
 optimizations. This paper aims to provide a better sense of how much and why
 programmers use `eval` in R. Understanding why `eval` is used in practice is
@@ -37,7 +37,7 @@ of more than 4.5M lines of R code.
 
 To better understand this artifact it is good to get familiar with the
 methodology that is presented in paper's Section 3. The following summarizes
-the main points about the corpus, the pipeline and dynamic analysis that is
+the main points about the corpus, the pipeline, and teh dynamic analysis that is
 used.
 
 #### Corpus
@@ -57,7 +57,7 @@ paper and used to gather the presented data. Conceptually, it consists of four
 main steps:
 
 1. Download and installs the corpora.
-1. Extracts and instrument all runnable code snippets from the installed
+1. Extracts and instruments all runnable code snippets from the installed
    packages and Kaggle scripts.
 1. Run the instrumented code capturing all calls to the `eval` function.
 1. Analyze the results.
@@ -69,10 +69,11 @@ bash. Details about the pipeline are presented in Section 3.2 of the paper.
 
 The main component of the pipeline is an `eval` tracer. It is an R package
 (called `evil`) that uses our dynamic analysis framework to record all calls to
-`eval` at runtime. The framework on top of a modified GNU R 4.0.2 virtual
-machine ([R-dyntrace](https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2)) that
-exposes low-level callbacks for a variety of runtime events. Details about the
-dynamic analysis is in Section 3.3 of the paper.
+`eval` at runtime. The framework is built on top of a modified GNU R 4.0.2
+virtual machine
+([R-dyntrace](https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2)) that exposes
+low-level callbacks for a variety of runtime events. Details about the dynamic
+analysis are in Section 3.3 of the paper.
 
 ### Prerequisites
 
@@ -86,7 +87,7 @@ various tasks. The following are the requirements for getting the image ready
 - GNU Make (4.2.1)
 
 These instructions were tested on a fresh minimal installation of Ubuntu 20.04
-LTS and on OSX (11.4).
+LTS and OSX (11.4).
 
 For the fresh Ubuntu installation we installed the requirements using the
 following:
@@ -129,9 +130,9 @@ sudo usermod -a -G docker <username>
 
 ### Not in the artifact
 
-Because of the licensing issues, we cannot redistribute neither the code nor
-the data from the Kaggle website. The rest of this document will therefore only
-focus only on base and CRAN corpora. 
+Because of the licensing issues, we can redistribute neither the code nor the
+data from the Kaggle website. The rest of this document will therefore only
+focus only on base and CRAN corpora.
 
 ### Organization
 
@@ -148,25 +149,25 @@ Reported times were measured on Linux 5.12 laptop with Intel i7-7560U @ 2.40GHz 
 ### Evaluating the artifact
 
 The quantitative results in the paper that are the subject of this artifact are
-presented in Section 4 and 5. They are in form of tables and figures as well as
-numbers embedded in the text. All are generated from
-[Rmarkdown](https://rmarkdown.rstudio.com/) notebooks. Concretely, the figures
-are saved into PDF files, tables into TEX files included in the paper and the
-rest of the numbers in another TEX files that use `\newcommand` macros (e.g.,
-`\newcommand{\CranAvailablePackages}{15,962\xspace}`). In the relevant sections
-we provide concrete links to all the figures and tables.
+presented in Sections 4 and 5. They are in form of tables and figures as well
+as numbers embedded in the text. All are generated from
+[R markdown](https://rmarkdown.rstudio.com/) notebooks. Concretely, the
+figures are saved into PDF files, tables into TEX files included in the paper,
+and the rest of the numbers also in TEX files that use `\newcommand` macros
+(e.g., `\newcommand{\CranAvailablePackages}{15,962\xspace}`). In the relevant
+sections, we provide concrete links to all the figures and tables.
 
-The paper presents a large scale study using over 15K CRAN packages. Redoing
-the very same experiment is a resource intensive task. It took over 60 hours on
+The paper presents a large-scale study using over 15K CRAN packages. Redoing
+the very same experiment is a resource-intensive task. It took over 60 hours on
 a cluster of 3 servers (cf. Figure 2 in the paper). While you are free to do
-the same, we do not expect you to redo the entire experiment. Instead we
+the same, we do not expect you to redo the entire experiment. Instead, we
 provide a preprocessed data so you could run just the data analysis. However,
 the artifact should work on any number of CRAN packages, so feel free to
 experiment as you find fit.
 
 ## Getting started guide
 
-In this section we will go through the steps of getting the artifact up and running.
+In this section, we will go through the steps of getting the artifact up and running.
 Before you begin, make sure you have a functional docker on your system by running:
 
 ```sh
@@ -177,7 +178,7 @@ It should eventually print `Hello from Docker!`. If it does not, your docker
 environment is not properly configured and the following instructions will not
 work.
 
-A common problem with a newly installed docker is a missing permission. If you
+A common problem with a newly installed docker is missing permission. If you
 got the following error:
 
 ```
@@ -210,7 +211,7 @@ The artifact repository should look like this
 
 ```sh
 .
-├── analysis            # Rmarkdown notebooks used for analysis
+├── analysis            # R markdown notebooks used for analysis
 ├── docker-image        # docker image source code
 ├── Makefile            # data analysis pipeline
 ├── Makevars            # basic pipeline configuration
@@ -221,9 +222,9 @@ The artifact repository should look like this
 
 ### 2. Get the docker image
 
-For the ease of use we pack all the dependencies in a docker image. We also use
-the very same image to run the experiment in a cluster to make sure each node
-has the same environment.
+For ease of use, we pack all the dependencies in a docker image. We also use the
+very same image to run the experiment in a cluster to make sure each node has
+the same environment.
 
 There are two options to get the image: pull it from the docker hub or build it
 locally.
@@ -242,7 +243,7 @@ locally.
     make docker-image
     ```
 
-    It takes about an hour as it needs to install a number of R packages.
+    It takes about an hour as it needs to install several R packages.
 
 ### 3. Run the docker container
 
@@ -281,8 +282,8 @@ Issuing `ls` should show the same structure as above with two additional directo
 
 ```sh
 ...
-├── CRAN                 # directory with R package sources
-├── library              # directory will installed R packages
+├── CRAN                 # R package sources
+├── library              # R package binaries
 ...
 ```
 
@@ -302,26 +303,27 @@ experiment.
 
 ### 4. Create a sample corpus
 
-The pipeline works with a corpus of R packages. This corpus is defined in a
-file `packages.txt` with one package name per line. To run the pipeline, we
-first need to create such file. You could try any R packages that are
+The pipeline works with a corpus of R packages. This corpus is defined in
+a file `packages.txt` with one package name per line. To run the pipeline, we
+first need to create such a file. You could try any R packages that are
 compatible with R 4.0.2 and are available in CRAN. The more packages, the
 longer will it take.
 
-We recommend to start with the following package:
+We recommend (to meet the 30min deadline) starting with the following single
+package:
 
 ```sh
 echo withr > packages.txt
 ```
 
-Next we need to install the packages:
+Next, we need to install the packages:
 
 ```sh
 make package-install
 ```
 
 This will install the package including all of their dependencies. By the end
-you should see something like (the versions might possibly differ if a package
+you should see something like (the versions might differ if a package
 has been updated in the meantime):
 
 ```
@@ -332,7 +334,7 @@ has been updated in the meantime):
 - withr_2.4.2.tar.gz
 ```
 
-The installed packages will be placed in `library` and their sources under
+The installed packages will be placed in the `library` and their sources under
 `CRAN/extracted`.
 
 ---
@@ -360,8 +362,8 @@ Among others, it will do the following:
 - Finds `eval` call sites from package source code (*package-evals-static*)
 - Runs the package code while tracing the calls to `eval` (*package-trace-eval*)
 
-For each of the longer running task, there should be a progress bar which shows
-an estimate remaining time. Allow at least 15 minutes. By the end it should
+For each of the long running task, there should be a progress bar which shows
+an estimate remaining time. Allow at least 15 minutes. By the end, it should
 finish with something like:
 
 ```
@@ -387,7 +389,7 @@ run
 └── package-scripts-to-run.txt
 ```
 
-Each directory contains results for each of the task that was run.
+Each directory contains results for each of the tasks that were run.
 To quickly check the results of the tracer, you can run:
 
 ```sh
@@ -409,7 +411,7 @@ Exit codes:
 ```
 
 This says that it successfully ran all 39 extracted R programs in about
-3 minutes (18 seconds average is OK as jobs run in parallel, cf. bellow). We
+3 minutes (18 seconds average is OK as jobs run in parallel, cf. below). We
 will go over the details in the next section.
 
 ---
@@ -417,9 +419,9 @@ will go over the details in the next section.
 **NOTE**
 
 - We use [GNU parallel](https://www.gnu.org/software/parallel/) to run certain
-  tasks in parallel. By default, the number of jobs will equal to the number of
+  tasks in parallel. By default, the number of jobs will equal the number of
   available cores. If you want to throttle it down, set the `JOBS` variable to
-  lower number (e.g. `make package-trace-eval JOBS=2`). You can see the current
+  a lower number (e.g. `make package-trace-eval JOBS=2`). You can see the current
   value by running `make info`.
 
 - Next time you run `make package-trace-eval` it will only run the tracer
@@ -429,9 +431,9 @@ will go over the details in the next section.
 - If anything goes wrong, you can always start from scratch by removing the
   `run` folder.
 
-- The results are either plain text files, CSV files or, for the larger output
+- The results are either plain text files, CSV files, or for the larger output
   we use [fst](https://www.fstpackage.org/) format which provides a fast data
-  frame compression based on the Facebook's
+  frame compression based on Facebook's
   [zstd](https://github.com/facebook/zstd) library. To view the content of an
   fst file, you could use the `scripts/cat.R` utility (e.g. `./scripts/cat.R
   run/package-trace-eval/writes.fst`)
@@ -441,8 +443,7 @@ will go over the details in the next section.
 ### 6. Run the analysis
 
 Right now you should have the raw data. Next, we need to preprocess them
-(mostly a data cleanup) and run the actual analysis. The analysis is done in R,
-concretely in a number of [R markdown](https://rmarkdown.rstudio.com/)
+(mostly a data cleanup) and run the actual analysis. The analysis is done in R using  [R markdown](https://rmarkdown.rstudio.com/)
 notebooks.
 
 First, we run the data preprocessing
@@ -451,7 +452,7 @@ First, we run the data preprocessing
 make package-preprocess
 ```
 
-This will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation and run it (*package-run*) so it can compute the tracer failure rate.
+This will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation, and run it (*package-run*) so it can compute the tracer failure rate.
 
 It should take about 2 minutes and the results will be in `run/preprocess/package`.
 The content should like like this:
@@ -471,8 +472,8 @@ run/preprocess/package
 └── undefined.fst
 ```
 
-This is the source for the next step, the analysis.
-We will run (*knit*) six analysis notebooks (from `analysis` folder):
+This is the source for the next step, the analysis. We will run (*knit*) six
+analysis notebooks (from the `analysis` folder):
 
 ```sh
 make package-analysis
@@ -532,13 +533,13 @@ There are two results:
 
    - The `img` sub-directory contains all the plots included in the paper.
    - The `tag` sub-directory contains latex tables and *tag* files - latex
-     macros for each of the number that is used in the paper.
+     macros for each of the numbers that is used in the paper.
 
 You can view the files from your machine. Please note that all the data are
-base on just a single-package corpus and thus some metric are not relevant.
+base on just a single-package corpus and thus some metrics are not relevant.
 
 The following is the list of the results that we include in the paper (the
-figure/table headings should be click-able links):
+figure/table headings should be clickable links):
 
 ---
 
@@ -576,24 +577,24 @@ the use of `eval` for a single CRAN package.
 
 ## Step-by-Step instructions
 
-In this section we provide additional details about how to trace eval calls for
+In this section, we provide additional details about how to trace `eval` calls for
 the R base libraries and how to reproduce the findings presented in the paper.
 
-For the steps in this section, we assume that you have successfully completed
-all the steps from the getting started guide and are in the bash prompt in the
-docker images (i.e. executed `make shell`).
+For the steps in this section, we assume that you have completed all the steps
+from the getting started guide and are in the bash prompt in the docker images
+(i.e. executed `make shell`).
 
 ### Tracing eval calls in base
 
 Next to CRAN, we also report on the use of `eval` in the core packages that are
 part of the R language. The reason why we treat them separately is that they
 are relatively stable, part of the language itself, written by R core
-maintainers and finally, there are relatively few `eval` call sites.
-Nevertheless they are also heavily exercised as there is hardly any R code that
-would execute without calling `eval` from core libraries.
+maintainers, and finally, there are relatively few `eval` call sites.
+Nevertheless, they are also heavily exercised as there is hardly any R code
+that would execute without calling `eval` from core libraries.
 
-To collect information about the base usage of `eval` we do a isolated run of a
-subset of the extracted programs from CRAN packages while tracing only the
+To collect information about the base usage of `eval` we do an isolated run of
+a subset of the extracted programs from CRAN packages while tracing only the
 `eval` call sites presented in core packages.
 
 Reusing the extracted programs from the getting started guide, we can trace
@@ -617,7 +618,7 @@ base using the following:
     make base-analysis
     ```
 
-The results is in [`base-usage.html`](run/analysis/base-usage.html).
+The results are in [`base-usage.html`](run/analysis/base-usage.html).
 
 ---
 
@@ -625,7 +626,7 @@ The results is in [`base-usage.html`](run/analysis/base-usage.html).
 
 - The number of programs it will run is controlled by the
   `BASE_SCRIPTS_TO_RUN_SIZE` environment variable, which is by default 25K. It
-  will therefore run up to that number of programs.
+  will therefore run-up to that number of programs.
 
 ---
 
@@ -697,14 +698,20 @@ The results will be in the same files as indicated above.
   adjusted by the `TIMEOUT` environment variable.
 - R does not provide any mechanism for pinning package versions. This means
   that even if you try all the CRAN packages, the results could be slightly
-  different from ours as the package evolves. However the general shape should
+  different from ours as the package evolves. However, the general shape should
   be the same.
 - Clean the `run` folder every time you experiment with a new corpus.
 
 ---
 
 As an alternative, we provide the preprocessed data on which you can run the
-analysis. This took 40 minutes.
+analysis. This is the result of running:
+
+```
+make package-preprocess base-preprocess kaggle-preprocess
+```
+
+on the entire corpus.
 
 1. Download the data (~180MB)
 
@@ -718,11 +725,9 @@ analysis. This took 40 minutes.
     tar xfvJ run-submission.tar.xz
     ```
 
-1. Run the analysis using the new full corpus
+1. Run the analysis using the new full corpus (~40 minutes)
 
-    This is again done by make. The only thing that we need to change is say
-    that the data are no longer in the `run` directory, but in
-    `run-submission`:
+    This is again done by make. The only thing that we need to do is to tell make to use a different `run` directory, i.e. `run-submission`:
 
     ```sh
     make analysis RUN_DIR=$PWD/run-submission
