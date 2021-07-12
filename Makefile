@@ -57,8 +57,7 @@ TRACE_EVAL_RESULTS := \
   reads.fst \
   reflection.fst \
   writes.fst \
-  resolved-expressions.fst \
-  provenances.fst
+  resolved-expressions.fst
 
 .PHONY: FORCE
 ########################################################################
