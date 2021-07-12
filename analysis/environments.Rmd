@@ -592,7 +592,8 @@ env_classes_calls %>% datatable()
 
 env_classes_sites %>% datatable()
 
-nrows <- 8
+
+nrows <- min(8, nrow(env_classes_sites)) 
 r_vec("env class names", nrows, env_classes_sites$env_class)
 r_vec("env class sites", nrows, env_classes_sites$n)
 r_vec("env class site percent", nrows, env_classes_sites$pc)
@@ -636,7 +637,7 @@ caller_env_sites <- caller_envs %>% group_by(hierarchy) %>%
    mutate(pc = ratio(n, nb_caller_env_sites), cpc = cumsum(pc))
 
 
-nrows <- 5
+nrows <- min(5, nrow(caller_env_sites)) 
 r_vec("caller env hierarchy name", nrows, caller_env_sites$hierarchy)
 r_vec("caller env hierarchy sites", nrows, caller_env_sites$n)
 r_vec("caller env hierarchy site percent", nrows, caller_env_sites$pc)
@@ -708,7 +709,7 @@ high_level_new_sites <- high_level_new %>%group_by(category) %>%
   mutate(pc = ratio(n, nb_synthetic_sites), cpc = cumsum(pc))
 
 
-nrows <- 4
+nrows <- min(4, nrow(high_level_new_sites)) 
 r_vec("new env category name", nrows, high_level_new_sites$category)
 r_vec("new env category sites", nrows, high_level_new_sites$n)
 r_vec("new env category site percent", nrows, high_level_new_sites$pc)
@@ -774,7 +775,7 @@ overview_table(
   r("nb one category envir site percent", one_category$pc)
 )
 
-nrows <- 4
+nrows <- min(4, nrow(poly_categories)) 
 r_vec("nb category envir", nrows, poly_categories$n_categories)
 r_vec("nb category envir sites", nrows, poly_categories$n)
 r_vec("nb category envir percent", nrows, poly_categories$pc)
