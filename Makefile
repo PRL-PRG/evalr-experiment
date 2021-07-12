@@ -660,7 +660,7 @@ info:
 package-analysis:
 	$(MAKE) -C analysis package
 
-.PHONY: base-anlysis
+.PHONY: base-analysis
 base-analysis:
 	$(MAKE) -C analysis base
 

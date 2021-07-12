@@ -21,7 +21,7 @@ kaggle:
 	$(call RMD,usage,kaggle-usage,$(PREPROCESS_DIR)/kaggle)
 
 .PHONY: package
-package: corpus normalized side-effects
+package: corpus normalized side-effects environments provenance
 	$(call RMD,usage,package-usage,$(PREPROCESS_DIR)/package)
 
 .PHONY: corpus
@@ -35,3 +35,12 @@ normalized:
 .PHONY: side-effects
 side-effects:
 	$(call RMD,side-effects,side-effects,$(PREPROCESS_DIR))
+
+
+.PHONY: environments
+environments:
+	$(call RMD,environments,environments,$(PREPROCESS_DIR)/package)
+
+.PHONY: provenance
+provenance:
+	$(call RMD,provenance,provenance,$(PREPROCESS_DIR)/package)

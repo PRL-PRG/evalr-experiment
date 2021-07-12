@@ -225,6 +225,8 @@ overview_table(
 ) -> TBL
 ```
 
+<a name="figure-5" />
+
 `r TBL`
 
 # Ev-dist 
@@ -277,6 +279,8 @@ overview_table(
 The distribution of eval calls, each bin represents a power of 10, the number 
 in the bin is the count of packages.
 
+<a name="figure-4" />
+
 `r TBL`
 
 # Triggered sites
@@ -307,6 +311,7 @@ overview_table(
   r("Staticatleastonecallsite", nrow(static_at_least_one_call_site))
 )
 ```
+
 
 `r TBL`
 
@@ -523,6 +528,8 @@ overview_table(
   r("Runbinh", sum[[8]])
 ) -> TBL
 ```
+
+<a name="normalized-bins-all" />
 
 `r TBL`
 

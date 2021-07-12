@@ -265,7 +265,7 @@ finish with something like:
 ```
 ...
 ----------------------------------------------------------------------
-=> MERGING provenances.fst
+=> MERGING calls.fst
 ----------------------------------------------------------------------
 ...
 make[1]: Leaving directory '/home/krikava/Research/Projects/evalR/artifact'
@@ -376,7 +376,7 @@ We will run (*knit*) four analysis notebooks (from `analysis` folder):
 make package-analysis
 ```
 
-It should take about a minutes and the results will be in `run/analysis`:
+It should take a couple of minutes and the results will be in `run/analysis`:
 
 ```
 run/analysis/
@@ -393,8 +393,10 @@ run/analysis/
 │   │   └── traced-eval-callsites.pdf                # Figure 6
 │   └── tag
 │       ├── corpus.tex
-│       ├── package_normalized_expr.tex
-│       ├── package_usage_metrics.tex
+│       ├── package_normalized_expr.tex              # Table 1
+|       ├── package_environments.tex                 # Tables 2, 3, 4, 5
+|       ├── package_provenance.tex                   # Table 6
+│       ├── package_usage_metrics.tex                # Figures 4, 5, 8a
 │       ├── side-effects.tex
 │       ├── table-se-target-envs.tex                 # Table 7
 │       └── table-se-types.tex                       # Table 8
@@ -402,6 +404,8 @@ run/analysis/
 ├── normalized.html
 ├── package-usage.html
 └── side-effects.html
+└── environments.html
+└── provenance.html
 ```
 
 There are two results:
@@ -410,10 +414,14 @@ There are two results:
 
     - [`corpus.html`](run/analysis/corpus.html) is mostly used for Section
       3.1.
+    - [`package-usage.html`](run/analysis/package-usage.html) contains data for
+      the CRAN dataset and is used for Section 4.
     - [`normalized.html`](run/analysis/normalized.html) is used for Section
       5.1.
-    - [`package-usage.html`](run/analysis/package-usage.html) contains data for
-      the CRAN dataset and is used for Section 4, 5.1, 5.2 and 5.3.
+    - [`environments.html`](run/analysis/environments.html) is used for Section
+      5.2.
+    - [`provenance.html`](run/analysis/provenance.html) is used for Section
+      5.3.
     - [`side-effects.html`](run/analysis/side-effects.html) provides data for
       Section 5.4.
 
@@ -435,10 +443,10 @@ figure/table headings should be click-able links):
 **FIGURES**
 
 - [Figure 3](run/analysis/paper/img/pkgs-eval-callsites-hist.pdf): CRAN `eval` call sites
-- [Figure 4]
-- [Figure 5]
+- [Figure 4](runanalysis/package-usage.html#figure-4): CRAN `eval` call frequency
+- [Figure 5](run/analysis/package-usage.html#figure-5): CRAN `eval` variants
 - [Figure 6](run/analysis/paper/img/traced-eval-callsites.pdf): `eval` call sites coverage
-- [Figure 7a]: Normalized calls - all
+- [Figure 7a](run/analysis/package-usage.html#normalized-bins-all): Normalized calls - all
 - [Figure 7b](run/analysis/paper/img/package_calls_per_run_per_call_site.pdf): Normalized calls - small
 - [Figure 8](run/analysis/paper/img/package_size_loaded_distribution.pdf): Loaded code
 - [Figure 9a](run/analysis/paper/img/package_events_per_pack_small.pdf): Instructions per call - small
@@ -448,12 +456,12 @@ figure/table headings should be click-able links):
 
 **TABLES**
 
-- [Table 1]():
-- [Table 2]():
-- [Table 3]():
-- [Table 4]():
-- [Table 5]():
-- [Table 6]():
+- [Table 1](run/analysis/normalized.html#table-minimized-expressions): minimized expressions
+- [Table 2](run/analysis/environments.html#table-env-kinds-per-site): kinds of environments per site
+- [Table 3](run/analysis/environments.html#table-function-offset): function offset for function environments
+- [Table 4](run/analysis/environments.html#table-wrapper-envs): wrapper environments (synthetic)
+- [Table 5](run/analysis/environments.html#table-multiplicities-envs): multiplicities, i.e. how many kinds of environments there are per site
+- [Table 6](run/analysis/provenance.html#table-provenances): provenance of the expression argument of `eval`
 - [Table 7](run/analysis/side-effects.html#table_se_target_envs): Target environments for side-effects
 - [Table 8](run/analysis/side-effects.html#table_se_types): Types of `eval` side-effects
 
@@ -625,24 +633,28 @@ very same structure as before. The following are links for convenience.
 
   - [`corpus.html`](run-submission/analysis/corpus.html) is mostly used for Section
     3.1.
+  - [`package-usage.html`](run-submission/analysis/package-usage.html) contains data for
+    the CRAN dataset and is used for Section 4.
   - [`normalized.html`](run-submission/analysis/normalized.html) is used for Section
     5.1.
-  - [`package-usage.html`](run-submission/analysis/package-usage.html) contains data for
-    the CRAN dataset and is used for Section 4, 5.1, 5.2 and 5.3.
   - [`base-usage.html`](run-submission/analysis/package-usage.html) contains data for
     the base dataset and is used primarily for Section 4.
   - [`kaggle-usage.html`](run-submission/analysis/package-usage.html) contains data for
     the Kaggle dataset and is used primarily for Section 4.
+  - [`environments.html`](run-submission/analysis/environments.html) provides data for
+    Section 5.2.
+  - [`provenance.html`](run-submission/analysis/provenance.html) provides data for
+    Section 5.3.
   - [`side-effects.html`](run-submission/analysis/side-effects.html) provides data for
     Section 5.4.
 
 **FIGURES**
 
 - [Figure 3](run-submission/analysis/paper/img/pkgs-eval-callsites-hist.pdf): CRAN `eval` call sites
-- [Figure 4]():
-- [Figure 5]():
+- [Figure 4](run-submission/analysis/package-usage.html#figure-4): CRAN `eval` call frequency
+- [Figure 5](run-submission/analysis/package-usage.html#figure-5): variants in CRAN
 - [Figure 6](run-submission/analysis/paper/img/traced-eval-callsites.pdf): `eval` call sites coverage
-- [Figure 7a]: Normalized calls - all
+- [Figure 7a](run-submission/analysis/package-usage.html#normalized-bins-all): Normalized calls - all
 - [Figure 7b](run-submission/analysis/paper/img/package_calls_per_run_per_call_site.pdf): Normalized calls - small
 - [Figure 8](run-submission/analysis/paper/img/package_size_loaded_distribution.pdf): Loaded code
 - [Figure 9a](run-submission/analysis/paper/img/package_events_per_pack_small.pdf): Instructions per call - small
@@ -652,12 +664,12 @@ very same structure as before. The following are links for convenience.
 
 **TABLES**
 
-- [Table 1]():
-- [Table 2]():
-- [Table 3]():
-- [Table 4]():
-- [Table 5]():
-- [Table 6]():
+- [Table 1](run-submission/analysis/normalized.html#table-minimized-expressions): Minimized expressions
+- [Table 2](run-submission/analysis/environments.html#table-env-kinds-per-site): Kinds of environments per site
+- [Table 3](run-submission/analysis/environments.html#table-function-offset): Function offset for function environments
+- [Table 4](run-submission/analysis/environments.html#table-wrapper-envs): Wrapper environments (synthetic)
+- [Table 5](run-submission/analysis/environments.html#table-multiplicities-envs): Multiplicities, i.e. how many kinds of environments there are per site
+- [Table 6](run-submission/analysis/provenance.html#table-provenances): Provenance of the expression argument of `eval`
 - [Table 7](run-submission/analysis/side-effects.html#table_se_target_envs): Target environments for side-effects
 - [Table 8](run-submission/analysis/side-effects.html#table_se_types): Types of `eval` side-effects
 
