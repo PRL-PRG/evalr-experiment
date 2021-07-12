@@ -670,6 +670,8 @@ analysis:
 DOCKER_SHELL_CONTAINER_NAME := $$USER-evalr-shell
 # default shell command
 SHELL_CMD ?= bash
+# additional docker run params
+SHELL_EXTRA ?=
 
 .PHONY: shell
 shell:
@@ -690,6 +692,7 @@ shell:
     -e R_LIBS=$(R_LIBS) \
     -e TZ=Europe/Prague \
     -w $(CURDIR) \
+    $(SHELL_EXTRA) \
     $(DOCKER_IMAGE_NAME) \
     $(SHELL_CMD)
 
