@@ -551,7 +551,7 @@ figure/table headings should be clickable links):
 **FIGURES**
 
 - [Figure 3](run/analysis/paper/img/pkgs-eval-callsites-hist.pdf): CRAN `eval` call sites
-- [Figure 4](runanalysis/package-usage.html#figure-4): CRAN `eval` call frequency
+- [Figure 4](run/analysis/package-usage.html#figure-4): CRAN `eval` call frequency
 - [Figure 5](run/analysis/package-usage.html#figure-5): CRAN `eval` variants
 - [Figure 6](run/analysis/paper/img/traced-eval-callsites.pdf): `eval` call sites coverage
 - [Figure 7a](run/analysis/package-usage.html#normalized-bins-all): Normalized calls - all
