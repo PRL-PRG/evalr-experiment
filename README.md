@@ -1,5 +1,5 @@
 ---
-title: "Why We Eval in the Shadown"
+title: "Why We Eval in the Shadows"
 subtitle: "OOPSLA21 Artifact"
 author:
   - Aviral Goel
@@ -162,7 +162,7 @@ A few details about how the container is run:
 
 - It sets the internal docker container user (called `r`) to have the same UID
   and GID as your username. This is to prevent any permission problems.
-- It mount the artifact repository folder to the very same path as it is on your
+- It mounts the artifact repository folder to the very same path as it is on your
   machine (i.e. if you cloned the repository to
   `/home/alicia/Temp/evalr-experiment`, the current working directory in the
   container will be the same).
