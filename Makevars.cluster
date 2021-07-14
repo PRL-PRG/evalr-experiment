@@ -1,0 +1,29 @@
+# -*- mode: makefile -*-
+
+# the idenity for the sshd in docker
+SSH_IDENTITY_FILE := docker-image/id_rsa
+
+# path to ssh connection multiplexing
+SSH_CONTROL_FILE_PREFIX := $(CURDIR)/ssh-controlmaster-
+
+# the port of the sshd running in the docker container
+SSH_HOST_PORT := 2222
+
+# how to connect to a node
+SSH := ssh -o ControlPath=$(SSH_CONTROL_FILE_PREFIX)%r@%h:%p -F none -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $(SSH_HOST_PORT) -l r -i $(SSH_IDENTITY_FILE) $(SSH_EXTRA)
+
+# number of jobs to run in parallel per node
+SSH_NUM_SLOTS := 64
+
+# all hosts
+HOSTS := prl2 prl3 prl4
+
+# this host
+HOSTNAME := $(shell hostname)
+
+# its worker name
+WORKER_NAME := evalr-worker-$(HOSTNAME)
+
+# slaves (excluding the one from which we run this make file)
+SLAVES = $(filter-out $(HOSTNAME),$(HOSTS))
+

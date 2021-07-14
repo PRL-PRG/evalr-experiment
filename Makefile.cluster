@@ -7,9 +7,7 @@ MAKEFLAGS += --no-builtin-rules
 .SUFFIXES:
 
 include Makevars
-
-HOSTNAME := $(shell hostname)
-WORKER_NAME := evalr-worker-$(HOSTNAME)
+include Makevars.cluster
 
 .PHONY: image
 image:

@@ -24,6 +24,15 @@ All further commands should be run inside the repository.
 
 ### docker-local
 
+You will need the following tools installed:
+
+- GNU bash 5.0+
+- Docker 20.0+
+- git 2.24+
+- GNU Make 4.2+
+
+(Versions are indicative, just the one we use).
+
 For this one only need GNU make, docker and git (to clone this repository).
 
 1. Get the docker image
@@ -67,7 +76,11 @@ For this one only need GNU make, docker and git (to clone this repository).
 ### local
 
 If you know what are you doing, you could also develop locally.
-For this we need to setup the environment:
+Next to the *docker-local* dependencies you will additionally need:
+
+- [fd](https://github.com/sharkdp/fd) version 8.0+ (the merge scripts calls `fd` binary)
+
+First you need to setup the environment:
 
 1. Install [R-dyntrace](https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2),
    a modified GNU R 4.0.2 VM that exposes low-level callbacks for a variety of
@@ -99,13 +112,38 @@ For this we need to setup the environment:
 
 ### docker-cluster
 
-1. Add hostnames into `Makefile.cluster`
+Next to the docker-local dependencies you will also need:
+
+- [tmux](https://github.com/tmux/tmux) version 2.6+
+- [GNU parallel](https://www.gnu.org/software/parallel/) version 20200322+
+
+    Installable using
+
+    ```sh
+    sh -c "$(curl -sSL 'https://bit.ly/install-gnu-parallel-2')"
+    ```
+
+The cluster is setup in the following way:
+
+- in each of the hosts mentioned in
+
+1. Check the cluster configuration in `Makevars.cluster`
+
+   The only thing that should be adjusted are `HOSTS` and `SSH_NUM_SLOTS`.
+
+1. Make sure you can connect with no password to each of the host from the host
+   from which you will run the following commands.
 
 1. Setup nodes
 
     ```sh
     make -f Makefile.cluster node-setup
     ```
+
+    This will connect to each of the hosts using ssh. Pull docker image and run
+    it as a new container with sshd in the foreground. It will connect to that
+    that sshd instance using a connection multiplexing (ssh control file) to
+    speed up the consequent connections from GNU parallel.
 
     ---
 
@@ -115,6 +153,12 @@ For this we need to setup the environment:
     - Run the `node-setup` target in tmux - it creates a new window split pane, one per node
 
     ---
+
+1. Generate the cluster description file for parallel
+
+    ```sh
+    make -f Makefile.cluster ssh-login-file
+    ```
 
 1. Run any target with `CLUSTER=1`
 
