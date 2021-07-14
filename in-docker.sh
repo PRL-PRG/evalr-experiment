@@ -1,8 +1,9 @@
 #!/bin/bash
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 args"
-    exit 1
+if [ $# -gt 0 ]; then
+  CMD="$*"
+else
+  CMD=bash
 fi
 
-exec make shell SHELL_CMD="$*"
+exec make shell SHELL_CMD="$CMD"

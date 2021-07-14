@@ -1,19 +1,30 @@
 # -*- mode: makefile -*-
-
 # saner makefile
-THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
-THIS_MAKE := $(MAKE) -C $(CURDIR) -f $(THIS_MAKEFILE)
 MAKEFLAGS += --no-builtin-rules
 .SUFFIXES:
 
 include Makevars
 
+SSH_IDENTITY_FILE := docker-image/id_rsa
+SSH_CONTROL_FILE_PREFIX := $(CURDIR)/ssh-controlmaster-
+SSH_HOST_PORT := 2222
+SSH := ssh -o ControlPath=$(SSH_CONTROL_FILE_PREFIX)%r@%h:%p -F none -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -p $(SSH_HOST_PORT) -l r -i $(SSH_IDENTITY_FILE) $(SSH_EXTRA)
+SSH_NUM_SLOTS := 64
+
+# all hosts
+HOSTS := prl2 prl3 prl4
+# slaves (excluding the one from which we run this make file)
+SLAVES = $(filter-out $(HOSTNAME),$(HOSTS))
+
 HOSTNAME := $(shell hostname)
 WORKER_NAME := evalr-worker-$(HOSTNAME)
 
+THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
+THIS_MAKE := $(MAKE) -C $(CURDIR) -f $(THIS_MAKEFILE)
+
 .PHONY: image
 image:
-	$(MAKE) -C docker-image
+	$(MAKE) -f Makefile docker-image
 
 .PHONY: .r-dyntrace-docker-image
 .r-dyntrace-docker-image:
