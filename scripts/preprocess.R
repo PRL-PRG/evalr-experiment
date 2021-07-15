@@ -611,12 +611,7 @@ main <- function() {
 
   cat("\n")
 
-  if (arguments$args[1] %in% c("calls", "all")) {
-    preprocess_calls(arguments$options)
-  }
-  else if (arguments$args[1] %in% c("reflection", "all")) {
-    preprocess_reflection(arguments$options)
-  }
+  preprocess_calls(arguments$options)
 
   invisible(NULL)
 }

@@ -57,10 +57,8 @@ TRACE_EVAL_WRAP_TEMPLATE_FILE := $(SCRIPTS_DIR)/trace-eval-wrap-template.R
 # Tracing results to be merged
 TRACE_EVAL_RESULTS := \
   calls.fst \
-  code.fst \
   dependencies.fst \
   reads.fst \
-  reflection.fst \
   writes.fst \
   resolved-expressions.fst \
   provenances.fst
@@ -112,8 +110,6 @@ PACKAGE_TRACE_EVAL_DIR         := $(RUN_DIR)/package-trace-eval
 PACKAGE_TRACE_EVAL_STATS       := $(PACKAGE_TRACE_EVAL_DIR)/parallel.csv
 PACKAGE_TRACE_EVAL_FILES       := $(patsubst %,$(PACKAGE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 PACKAGE_TRACE_EVAL_CALLS       := $(PACKAGE_TRACE_EVAL_DIR)/calls.fst
-PACKAGE_TRACE_EVAL_CODE        := $(PACKAGE_TRACE_EVAL_DIR)/code.fst
-PACKAGE_TRACE_EVAL_REFLECTION  := $(PACKAGE_TRACE_EVAL_DIR)/reflection.fst
 PACKAGE_TRACE_EVAL_WRITES      := $(PACKAGE_TRACE_EVAL_DIR)/writes.fst
 PACKAGE_TRACE_EVAL_PROVENANCES := $(PACKAGE_TRACE_EVAL_DIR)/provenances.fst
 PACKAGE_SCRIPTS_TO_RUN_TXT     ?= $(RUN_DIR)/package-scripts-to-run.txt
@@ -133,7 +129,6 @@ BASE_TRACE_EVAL_DIR     := $(RUN_DIR)/base-trace-eval
 BASE_TRACE_EVAL_STATS   := $(BASE_TRACE_EVAL_DIR)/parallel.csv
 BASE_TRACE_EVAL_FILES   := $(patsubst %,$(BASE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 BASE_TRACE_EVAL_CALLS   := $(BASE_TRACE_EVAL_DIR)/calls.fst
-BASE_TRACE_EVAL_REFLECTION   := $(BASE_TRACE_EVAL_DIR)/reflection.fst
 BASE_TRACE_EVAL_PROVENANCES := $(BASE_TRACE_EVAL_DIR)/provenances.fst
 BASE_SCRIPTS_TO_RUN_TXT := $(RUN_DIR)/base-scripts-to-run.txt
 
@@ -162,7 +157,6 @@ KAGGLE_TRACE_EVAL_DIR   := $(RUN_DIR)/kaggle-trace-eval
 KAGGLE_TRACE_EVAL_STATS := $(KAGGLE_TRACE_EVAL_DIR)/parallel.csv
 KAGGLE_TRACE_EVAL_FILES := $(patsubst %,$(KAGGLE_TRACE_EVAL_DIR)/%,$(TRACE_EVAL_RESULTS))
 KAGGLE_TRACE_EVAL_CALLS := $(KAGGLE_TRACE_EVAL_DIR)/calls.fst
-KAGGLE_TRACE_EVAL_REFLECTION := $(KAGGLE_TRACE_EVAL_DIR)/reflection.fst
 KAGGLE_TRACE_EVAL_PROVENANCES := $(KAGGLE_TRACE_EVAL_DIR)/provenances.fst
 
 ########################################################################
@@ -466,15 +460,14 @@ $(PACKAGE_SIDE_EFFECTS_FILE): $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRACE_EVAL_W
     --writes $(PACKAGE_TRACE_EVAL_WRITES) \
     --out-side-effects $(PACKAGE_SIDE_EFFECTS_FILE)
 
-$(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) $(PACKAGE_TRACE_EVAL_CODE) $(PACKAGE_TRACE_EVAL_REFLECTION)
+$(PACKAGE_PREPROCESS_FILES): $(CORPUS) $(PACKAGE_TRACE_EVAL_CALLS) 
 	$(call LOG,PREPROCESSING PACKAGE DATA)
 	-mkdir -p $(@D)
 	$(RSCRIPT) $(SCRIPTS_DIR)/preprocess.R \
 	  $(PREPROCESS_TYPE) \
     --corpus $(CORPUS) \
     --calls $(PACKAGE_TRACE_EVAL_CALLS) \
-	--provenance $(PACKAGE_TRACE_EVAL_PROVENANCES) \
-    --reflection $(PACKAGE_TRACE_EVAL_REFLECTION) \
+	  --provenance $(PACKAGE_TRACE_EVAL_PROVENANCES) \
     --out-summarized $(PACKAGE_SUM_FILE) \
     --out-summarized-externals $(PACKAGE_SUM_EXTERNALS_FILE) \
     --out-undefined $(PACKAGE_SUM_UNDEFINED_FILE)
@@ -499,7 +492,6 @@ $(BASE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(BASE_TRACE_EVAL_CALLS)
     --corpus $(PACKAGES_CORE_FILE) \
     --calls $(BASE_TRACE_EVAL_CALLS) \
 	--provenance $(BASE_TRACE_EVAL_PROVENANCES) \
-    --reflection $(BASE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(BASE_SUM_FILE) \
     --out-summarized-externals $(BASE_SUM_EXTERNALS_FILE) \
     --out-undefined $(BASE_SUM_UNDEFINED_FILE)
@@ -512,7 +504,6 @@ $(KAGGLE_PREPROCESS_FILES): $(PACKAGES_CORE_FILE) $(KAGGLE_TRACE_EVAL_CALLS) $(K
     --corpus $(KAGGLE_CORPUS_FILE) \
     --calls $(KAGGLE_TRACE_EVAL_CALLS) \
 	--provenance $(KAGGLE_TRACE_EVAL_PROVENANCES) \
-    --reflection $(KAGGLE_TRACE_EVAL_REFLECTION) \
     --out-summarized $(KAGGLE_SUM_FILE) \
     --out-summarized-externals $(KAGGLE_SUM_EXTERNALS_FILE) \
     --out-undefined $(KAGGLE_SUM_UNDEFINED_FILE) \
