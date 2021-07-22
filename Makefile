@@ -22,7 +22,7 @@ CORPUS             := $(RUN_DIR)/corpus.txt
 CORPUS_DETAILS     := $(RUN_DIR)/corpus.fst
 
 # Where to fetch the libraries - override if need to clone using SSH
-REPO_BASE_URL ?= "https://github.com"
+REPO_BASE_URL ?=$(shell dirname $$(dirname $$(git remote get-url origin)))
 # Our libraries required for the experiment
 LIBS := injectr instrumentr evil runr
 
@@ -557,7 +557,7 @@ package-preprocess: $(CORPUS) \
 	cp -f $(PACKAGE_RUN_STATS) $(PACKAGE_PREPROCESS_DIR)/run-log.csv
 	cp -f $(PACKAGE_RUNNABLE_CODE_EVAL_CSV) $(PACKAGE_PREPROCESS_DIR)/runnable-code.csv
 
-package-all: package-install package-trace-eval package-run package-coverage
+package-all: package-install package-trace-eval package-preprocess package-analysis
 
 .PHONY: kaggle-kernels
 kaggle-kernels: $(KAGGLE_KERNELS_CSV) $(KAGGLE_KERNELS_EVALS_STATIC_CSV) $(KAGGLE_KERNELS_STATS)
@@ -610,6 +610,8 @@ preprocess: package-preprocess base-preprocess kaggle-preprocess
 
 .PHONY: libs-dependencies
 libs-dependencies: $(DEPENDENCIES_TXT)
+	@[ -d $(CRAN_ZIP_DIR) ] || mkdir -p $(CRAN_ZIP_DIR)
+	@[ -d $(CRAN_SRC_DIR) ] || mkdir -p $(CRAN_SRC_DIR)
 	$(call PKG_INSTALL_FROM_FILE,$(DEPENDENCIES_TXT))
 
 .PHONY: injectr

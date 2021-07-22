@@ -79,6 +79,7 @@ If you know what are you doing, you could also develop locally.
 Next to the *docker-local* dependencies you will additionally need:
 
 - [fd](https://github.com/sharkdp/fd) version 8.0+ (the merge scripts calls `fd` binary)
+- [cloc](https://github.com/AlDanial/cloc) version 1.9+
 
 First you need to setup the environment:
 
@@ -87,9 +88,8 @@ First you need to setup the environment:
    runtime events.
 
     ```sh
-    git clone -b r-4.0.2 https://github.com/PRL-PRG/R-dyntrace/tree/r-4.0.2
-    cd R-dyntrace
-    ./build
+    git clone -b r-4.0.2 https://github.com/PRL-PRG/R-dyntrace
+    cd R-dyntrace && ./build && cd ..
     ```
 
 1. Set the local environment
@@ -108,6 +108,20 @@ First you need to setup the environment:
 
     ```sh
     make libs
+    ```
+
+   After it is installed, you have to source the environment again
+
+    ```sh
+    source environment.sh
+    ```
+
+1. Run the pipeline
+
+    Given that you a corpus `packages.txt`, you can run the pipeline:
+
+    ```sh
+    make package-all
     ```
 
 ### docker-cluster
