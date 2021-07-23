@@ -231,7 +231,7 @@ cd evalr-experiment
 
 ---
 
-The artifact repository should look like this
+The artifact repository should look like this:
 
 ```sh
 .
@@ -302,7 +302,7 @@ r@00028ce1c497:/home/krikava/evalr-experiment$
 ```
 
 The hostname (`00028ce1c497`) will likely be different and the current working
-directory (`/home/krikava/evalr-experiment`) depends on where did you cloned
+directory (`/home/krikava/evalr-experiment`) depends on where you cloned
 the repository.
 
 There are two things to double check: the user/group ID mapping and whether the
@@ -337,7 +337,7 @@ prompt in the docker container.
     ps ax | grep Xvfb
     ```
 
-    should list the `Xvfb` process, like
+    should list the `Xvfb` process, like:
 
     ```
     12 pts/0    Sl     0:00 Xvfb :6 -screen 0 1280x1024x24
@@ -391,7 +391,7 @@ The pipeline works with a corpus of R packages. This corpus is defined in
 a file `packages.txt` with one package name per line. To run the pipeline, we
 first need to create such a file. You could try any R packages that are
 compatible with R 4.0.2 and are available in CRAN. The more packages, the
-longer will it take.
+longer it will take.
 
 We recommend (to meet the 30min deadline) starting with the following single
 package:
@@ -538,7 +538,7 @@ Right now you should have the raw data. Next, we need to preprocess them
 (mostly a data cleanup) and run the actual analysis. The analysis is done in R using  [R markdown](https://rmarkdown.rstudio.com/)
 notebooks.
 
-First, we run the data preprocessing
+First, we run the data preprocessing:
 
 ```sh
 make package-preprocess
@@ -886,7 +886,7 @@ The results will be in the same files as indicated above.
 - The final package count might be smaller as not all packages use evals. Some
   packages could also be filtered out because they cannot be installed (missing
   some native dependencies) or they do not contain R code.
-- By default, there is 35 minutes timeout for all the tasks that run in
+- By default, there is a 35 minutes timeout for all the tasks that run in
   parallel (e.g., extracting package metadata, running R programs). It can be
   adjusted by the `TIMEOUT` environment variable.
 - R does not provide any mechanism for pinning package versions. This means
