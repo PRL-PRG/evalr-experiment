@@ -740,16 +740,75 @@ base using the following:
     make base-trace-eval
     ```
 
+    This should finish with output like:
+
+    ```
+    ...
+    ----------------------------------------------------------------------
+    => MERGING resolved-expressions.fst
+    ----------------------------------------------------------------------
+    /R/R-dyntrace/bin/Rscript /R/R-dyntrace/library/runr/merge-files.R --in /home/krikava/evalr-experiment//run/base-trace-eval resolved-expressions.fst
+    Merging resolved-expressions.fst from /home/krikava/evalr-experiment//run/base-trace-eval ...
+    - running: fd -t f -F -c never --min-depth 2 resolved-expressions.fst /home/krikava/evalr-experiment//run/base-trace-eval ...
+    - found: 39
+    - merged file: /home/krikava/evalr-experiment//run/base-trace-eval/resolved-expressions.fst
+    - merged errors file: /home/krikava/evalr-experiment//run/base-trace-eval/resolved-expressions-errors.fst
+    - filtering 39 loaded data frames...
+    - saving 382 records into: /home/krikava/evalr-experiment//run/base-trace-eval/resolved-expressions.fst  ... done (in  0 )
+    make[1]: Leaving directory '/home/krikava/evalr-experiment'
+    ```
+
 1. Preprocess base
 
     ```sh
     make base-preprocess
     ```
 
+    This should finish with output like:
+
+    ```
+    ...
+    ----------------------------------------------------------------------
+    => BASE NORMALIZATION normalized-expressions.csv
+    ----------------------------------------------------------------------
+    /R/R-dyntrace/bin/Rscript /home/krikava/evalr-experiment//scripts/norm.R -f /home/krikava/evalr-experiment//run/base-trace-eval/resolved-expressions.fst > /home/krikava/evalr-experiment//run/preprocess/base/normalized-expressions.csv
+    make[1]: Leaving directory '/home/krikava/evalr-experiment'
+    make[1]: Entering directory '/home/krikava/evalr-experiment'
+    make[1]: '/home/krikava/evalr-experiment//run/base-evals-static/base-evals-static.csv' is up to date.
+    make[1]: Leaving directory '/home/krikava/evalr-experiment'
+    cp -f packages-core.txt /home/krikava/evalr-experiment//run/preprocess/base/corpus.txt
+    cp -f /home/krikava/evalr-experiment//run/base-evals-static/base-evals-static.csv /home/krikava/evalr-experiment//run/preprocess/base/evals-static.csv
+    ```
+
 1. Run the analysis
 
     ```sh
     make base-analysis
+    ```
+
+    This should finish with output like:
+
+    ```
+    ...
+    output file: usage.knit.md
+
+    /usr/bin/pandoc +RTS -K512m -RTS usage.knit.md --to html4 --from markdown+autolink_bare_uris+tex_math_single_backslash --output /home/krikava/evalr-experiment//run/analysis/base-usage.html --self-contained --variable bs3=TRUE --standalone --section-divs --table-of-contents --toc-depth 3 --variable toc_float=1 --variable toc_selectors=h1,h2,h3 --variable toc_collapsed=1 --variable toc_smooth_scroll=1 --variable toc_print=1 --template /R/R-dyntrace/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable theme=bootstrap --include-in-header /tmp/RtmpccNLXg/rmarkdown-str20c7401f2b85.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' --variable code_folding=hide --variable code_menu=1
+
+    Output created: /home/krikava/evalr-experiment//run/analysis/base-usage.html
+    Warning messages:
+    1: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+      semi-transparency is not supported on this device: reported only once per page
+    2: In grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height, resolveHJust(x$just,  :
+      semi-transparency is not supported on this device: reported only once per page
+    3: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+      semi-transparency is not supported on this device: reported only once per page
+    4: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+      semi-transparency is not supported on this device: reported only once per page
+    5: In grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height, resolveHJust(x$just,  :
+      semi-transparency is not supported on this device: reported only once per page
+    >
+    >
+    make[1]: Leaving directory '/home/krikava/evalr-experiment/analysis'
     ```
 
 The results are in [`base-usage.html`](run/analysis/base-usage.html).
@@ -853,10 +912,54 @@ on the entire corpus. The analysis itself takes about 40 minutes.
     wget -O run-submission.tar.xz https://owncloud.cesnet.cz/index.php/s/O2ntsqPufhKRObv/download
     ```
 
+    finishing with
+
+    ```
+    2021-07-22 16:06:21 (5.86 MB/s) - ‘run-submission.tar.xz’ saved [177664952/177664952]
+    ```
+
 1. Extract the archive (~1.5GB)
 
     ```sh
     tar xfvJ run-submission.tar.xz
+    ```
+
+    extracting the following files:
+
+    ```
+    run-submission/
+    run-submission/preprocess/
+    run-submission/preprocess/package/
+    run-submission/preprocess/package/summarized-externals.fst
+    run-submission/preprocess/package/non-necessary-value-evals.csv
+    run-submission/preprocess/package/corpus.txt
+    run-submission/preprocess/package/side-effects.fst
+    run-submission/preprocess/package/run-log.csv
+    run-submission/preprocess/package/undefined.fst
+    run-submission/preprocess/package/evals-static.csv
+    run-submission/preprocess/package/trace-log.csv
+    run-submission/preprocess/package/summarized.fst
+    run-submission/preprocess/package/code.fst
+    run-submission/preprocess/package/normalized-expressions.csv
+    run-submission/preprocess/package/runnable-code.csv
+    run-submission/preprocess/package/corpus.fst
+    run-submission/preprocess/kaggle/
+    run-submission/preprocess/kaggle/summarized-externals.fst
+    run-submission/preprocess/kaggle/kernel.csv
+    run-submission/preprocess/kaggle/corpus.txt
+    run-submission/preprocess/kaggle/undefined.fst
+    run-submission/preprocess/kaggle/evals-static.csv
+    run-submission/preprocess/kaggle/trace-log.csv
+    run-submission/preprocess/kaggle/summarized.fst
+    run-submission/preprocess/kaggle/normalized-expressions.csv
+    run-submission/preprocess/base/
+    run-submission/preprocess/base/summarized-externals.fst
+    run-submission/preprocess/base/corpus.txt
+    run-submission/preprocess/base/undefined.fst
+    run-submission/preprocess/base/evals-static.csv
+    run-submission/preprocess/base/summarized.fst
+    run-submission/preprocess/base/normalized-expressions.csv
+    run-submission/.gitignore
     ```
 
 1. Run the analysis using the new full corpus (~40 minutes)
@@ -865,6 +968,30 @@ on the entire corpus. The analysis itself takes about 40 minutes.
 
     ```sh
     make analysis RUN_DIR=$PWD/run-submission
+    ```
+
+    finishing with output:
+
+    ```
+    output file: usage.knit.md
+
+    /usr/bin/pandoc +RTS -K512m -RTS usage.knit.md --to html4 --from markdown+autolink_bare_uris+tex_math_single_backslash --output /home/krikava/evalr-experiment/run-submission/analysis/kaggle-usage.html --self-contained --variable bs3=TRUE --standalone --section-divs --table-of-contents --toc-depth 3 --variable toc_float=1 --variable toc_selectors=h1,h2,h3 --variable toc_collapsed=1 --variable toc_smooth_scroll=1 --variable toc_print=1 --template /R/R-dyntrace/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable theme=bootstrap --include-in-header /tmp/RtmpouYuMT/rmarkdown-str29ee23fc99de.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' --variable code_folding=hide --variable code_menu=1
+
+    Output created: /home/krikava/evalr-experiment/run-submission/analysis/kaggle-usage.html
+    Warning messages:
+    1: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+      semi-transparency is not supported on this device: reported only once per page
+    2: In grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height, resolveHJust(x$just,  :
+      semi-transparency is not supported on this device: reported only once per page
+    3: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+      semi-transparency is not supported on this device: reported only once per page
+    4: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+      semi-transparency is not supported on this device: reported only once per page
+    5: In grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height, resolveHJust(x$just,  :
+      semi-transparency is not supported on this device: reported only once per page
+    >
+    >
+    make[1]: Leaving directory '/home/krikava/evalr-experiment/analysis'
     ```
 
 The results will be generated in `run-submission/analysis` and they follow the
