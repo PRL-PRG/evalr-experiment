@@ -198,7 +198,7 @@ Simply add your username into the `docker` group (e.g. `sudo usermod -a -G docke
 ### 1. Get a copy of the repository
 
 ``` sh
-git clone -b oopsla21 ssh://git@github.com/PRL-PRG/evalr-experiment
+git clone -b oopsla21 https://github.com/PRL-PRG/evalr-experiment
 cd evalr-experiment
 ```
 
