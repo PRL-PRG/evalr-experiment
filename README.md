@@ -266,6 +266,44 @@ On Apple M1 you might need to run:
 make shell SHELL_EXTRA='--platform linux/amd64'
 ```
 
+There are two things to double check: the user/group ID mapping and whether the
+X11 virtual frame buffer is up. The following command shall be run in the bash
+prompt in the docker container.
+
+1. User/Group ID
+
+    ```sh
+    id
+    ```
+
+    should print the same user ID (uid) and group ID (gid) as your user have on
+    the host machine running the docker container. This is important to make
+    sure files can be seamlessly accessed without any need for sudo access.
+
+1. X11
+
+    ```sh
+    export | grep DISPLAY
+    ```
+
+    should print
+
+    ```
+    declare -x DISPLAY=":6"
+    ```
+
+    and
+
+    ```sh
+    ps ax | grep Xvfb
+    ```
+
+    should list the `Xvfb` process, like
+
+    ```
+    12 pts/0    Sl     0:00 Xvfb :6 -screen 0 1280x1024x24
+    ```
+
 A few details about how the container is run:
 
 - It sets the internal docker container user (called `r`) to have the same UID
