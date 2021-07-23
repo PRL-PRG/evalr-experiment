@@ -197,8 +197,27 @@ Simply add your username into the `docker` group (e.g. `sudo usermod -a -G docke
 
 ### 1. Get a copy of the repository
 
+Clone the repository, the **oopsla21** branch:
+
 ``` sh
 git clone -b oopsla21 https://github.com/PRL-PRG/evalr-experiment
+```
+
+output:
+
+```
+Cloning into 'evalr-experiment'...
+remote: Enumerating objects: 1196, done.
+remote: Counting objects: 100% (676/676), done.
+remote: Compressing objects: 100% (342/342), done.
+remote: Total 1196 (delta 420), reused 577 (delta 329), pack-reused 520
+Receiving objects: 100% (1196/1196), 20.60 MiB | 5.86 MiB/s, done.
+Resolving deltas: 100% (752/752), done.
+```
+
+Enter the cloned directory:
+
+```sh
 cd evalr-experiment
 ```
 
@@ -221,7 +240,9 @@ The artifact repository should look like this
 ├── Makefile            # data analysis pipeline
 ├── Makevars            # basic pipeline configuration
 ├── packages-core.txt   # list of R core packages (used only internally)
-├── README.md           # this readme
+├── README.md           # this readme source in Markdown format
+├── README.pdf          # this readme in PDF format
+├── README.html         # this readme in HTML format
 └── scripts             # utility scripts for the pipeline
 ```
 
@@ -241,6 +262,14 @@ locally.
     ```
 
     This might take a few minutes, the image has ~4GB.
+    At the end it should print:
+
+    ```
+    ...
+    Digest: sha256:8e7997a3a2b6114a92962d7f105ca372c27fbe9710bc8794f0915c697d0e9c26
+    Status: Downloaded newer image for prlprg/project-evalr:oopsla21
+    docker.io/prlprg/project-evalr:oopsla21
+    ```
 
 1. Building the image locally:
 
@@ -265,6 +294,16 @@ On Apple M1 you might need to run:
 ```sh
 make shell SHELL_EXTRA='--platform linux/amd64'
 ```
+
+When successful, it should give you a bash prompt:
+
+```
+r@00028ce1c497:/home/krikava/evalr-experiment$
+```
+
+The hostname (`00028ce1c497`) will likely be different and the current working
+directory (`/home/krikava/evalr-experiment`) depends on where did you cloned
+the repository.
 
 There are two things to double check: the user/group ID mapping and whether the
 X11 virtual frame buffer is up. The following command shall be run in the bash
@@ -304,13 +343,15 @@ prompt in the docker container.
     12 pts/0    Sl     0:00 Xvfb :6 -screen 0 1280x1024x24
     ```
 
+    The X11 is required by R packages to produce graphical output, e.g., export plots into PNG/PDF files.
+
 A few details about how the container is run:
 
 - It sets the internal docker container user (called `r`) to have the same UID
   and GID as your username. This is to prevent any permission problems.
-- It mounts the artifact repository folder to the very same path as it is on your
-  machine (i.e. if you cloned the repository to
-  `/home/alicia/Temp/evalr-experiment`, the current working directory in the
+- It mounts the artifact repository folder to the very same path as it is on
+  your machine (i.e. if you cloned the repository to
+  `/home/krikava/evalr-experiment`, the current working directory in the
   container will be the same).
 
 ---
@@ -412,11 +453,19 @@ finish with something like:
 ```
 ...
 ----------------------------------------------------------------------
-=> MERGING calls.fst
+=> MERGING resolved-expressions.fst
 ----------------------------------------------------------------------
-...
-make[1]: Leaving directory '/home/krikava/Research/Projects/evalR/artifact'
+/R/R-dyntrace/bin/Rscript /R/R-dyntrace/library/runr/merge-files.R --in /home/krikava/evalr-experiment//run/package-trace-eval resolved-expressions.fst
+Merging resolved-expressions.fst from /home/krikava/evalr-experiment//run/package-trace-eval ...
+- running: fd -t f -F -c never --min-depth 2 resolved-expressions.fst /home/krikava/evalr-experiment//run/package-trace-eval ...
+- found: 27
+- merged file: /home/krikava/evalr-experiment//run/package-trace-eval/resolved-expressions.fst
+- merged errors file: /home/krikava/evalr-experiment//run/package-trace-eval/resolved-expressions-errors.fst
+- filtering 27 loaded data frames...
+- saving 229 records into: /home/krikava/evalr-experiment//run/package-trace-eval/resolved-expressions.fst  ... done (in  0.001 )
+make[1]: Leaving directory '/home/krikava/evalr-experiment'
 ```
+
 
 After it finishes, there should a new `run` directory with the following content:
 
@@ -497,7 +546,24 @@ make package-preprocess
 
 This will re-extract runnable code from packages (*package-runnable-code*), this time without any instrumentation, and run it (*package-run*) so it can compute the tracer failure rate.
 
-It should take about 2 minutes and the results will be in `run/preprocess/package`.
+It should take about 2 minutes and finish with output like:
+
+```
+...
+----------------------------------------------------------------------
+=> PACKAGE NORMALIZATION normalized-expressions.csv
+----------------------------------------------------------------------
+/R/R-dyntrace/bin/Rscript /home/krikava/evalr-experiment//scripts/norm.R -f /home/krikava/evalr-experiment//run/package-trace-eval/resolved-expressions.fst > /home/krikava/evalr-experiment//run/preprocess/package/normalized-expressions.csv
+make[1]: Leaving directory '/home/krikava/evalr-experiment'
+cp -f /home/krikava/evalr-experiment//run/corpus.txt /home/krikava/evalr-experiment//run/preprocess/package/corpus.txt
+cp -f /home/krikava/evalr-experiment//run/corpus.fst /home/krikava/evalr-experiment//run/preprocess/package/corpus.fst
+cp -f /home/krikava/evalr-experiment//run/package-evals-static/package-evals-static.csv /home/krikava/evalr-experiment//run/preprocess/package/evals-static.csv
+cp -f /home/krikava/evalr-experiment//run/package-trace-eval/parallel.csv /home/krikava/evalr-experiment//run/preprocess/package/trace-log.csv
+cp -f /home/krikava/evalr-experiment//run/package-run/parallel.csv /home/krikava/evalr-experiment//run/preprocess/package/run-log.csv
+cp -f /home/krikava/evalr-experiment//run/package-runnable-code-eval/runnable-code.csv /home/krikava/evalr-experiment//run/preprocess/package/runnable-code.csv
+```
+
+The results will be in `run/preprocess/package`.
 The content should like like this:
 
 ```
@@ -522,7 +588,32 @@ analysis notebooks (from the `analysis` folder):
 make package-analysis
 ```
 
-It should take a couple of minutes and the results will be in `run/analysis`:
+It should take a couple of minutes showing a progress of knitting each individual Rmd file. It should finish with output like:
+
+```
+...
+output file: usage.knit.md
+
+/usr/bin/pandoc +RTS -K512m -RTS usage.knit.md --to html4 --from markdown+autolink_bare_uris+tex_math_single_backslash --output /home/krikava/evalr-experiment//run/analysis/package-usage.html --self-contained --variable bs3=TRUE --standalone --section-divs --table-of-contents --toc-depth 3 --variable toc_float=1 --variable toc_selectors=h1,h2,h3 --variable toc_collapsed=1 --variable toc_smooth_scroll=1 --variable toc_print=1 --template /R/R-dyntrace/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable theme=bootstrap --include-in-header /tmp/RtmpSFDqxi/rmarkdown-str155b3bc36fce.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' --variable code_folding=hide --variable code_menu=1
+
+Output created: /home/krikava/evalr-experiment//run/analysis/package-usage.html
+Warning messages:
+1: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+  semi-transparency is not supported on this device: reported only once per page
+2: In grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height, resolveHJust(x$just,  :
+  semi-transparency is not supported on this device: reported only once per page
+3: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+  semi-transparency is not supported on this device: reported only once per page
+4: In grid.Call.graphics(C_polygon, x$x, x$y, index) :
+  semi-transparency is not supported on this device: reported only once per page
+5: In grid.Call.graphics(C_rect, x$x, x$y, x$width, x$height, resolveHJust(x$just,  :
+  semi-transparency is not supported on this device: reported only once per page
+>
+>
+make[1]: Leaving directory '/home/krikava/evalr-experiment/analysis'
+```
+
+The results will be in `run/analysis`:
 
 ```
 run/analysis/
