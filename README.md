@@ -33,6 +33,8 @@ programmers use `eval` in R. Understanding why `eval` is used in practice is
 key to finding ways to mitigate its negative impact. It is a large-scale study
 of more than 4.5M lines of R code.
 
+**We advise to read the HTML or markdown version of this document. The pdf might have some formatting issues in the outputs with too long lines.**
+
 ### Methodology
 
 To better understand this artifact it is good to get familiar with the
