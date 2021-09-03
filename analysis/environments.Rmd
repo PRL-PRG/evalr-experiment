@@ -642,7 +642,7 @@ r_vec("caller env hierarchy name", nrows, caller_env_sites$hierarchy)
 r_vec("caller env hierarchy sites", nrows, caller_env_sites$n)
 r_vec("caller env hierarchy site percent", nrows, caller_env_sites$pc)
 
-nb_far_away_caller_sites <- caller_envs %>% filter(hierarchy > 3 | is.na(hierarchy)) %>% pull(src_ref) %>% n_distinct()
+nb_far_away_caller_sites <- caller_envs %>% filter(hierarchy >= 3 | is.na(hierarchy)) %>% pull(src_ref) %>% n_distinct()
 
 overview_table(
   r("nb far away caller sites", nb_far_away_caller_sites),
