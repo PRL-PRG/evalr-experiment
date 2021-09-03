@@ -257,6 +257,8 @@ overview_table(
   r("nb constructed site percent", ratio(nb_constructed_expr_sites, nb_call_sites)),
   r("nb string sites", nb_string_expr_sites),
   r("nb string site percent", ratio(nb_string_expr_sites, nb_call_sites)),
+  r("nb reflection sites", nb_match_call_exprs_sites),
+  r("reflection site percent", ratio(nb_match_call_exprs_sites, nb_call_sites)),
   r("nb unknown sites", nb_unknown_prov_exprs_sites),
   r("nb unknown site percent", ratio(nb_unknown_prov_exprs_sites, nb_call_sites)),
 ) 
