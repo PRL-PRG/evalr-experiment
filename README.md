@@ -1,3 +1,9 @@
+
+
+[![DOI](https://zenodo.org/badge/316350115.svg)](https://zenodo.org/badge/latestdoi/316350115)
+
+
+
 # evalr-experiment
 
 This is a skeleton project for running evalr experiments.
