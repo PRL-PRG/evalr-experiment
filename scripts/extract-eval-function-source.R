@@ -47,7 +47,10 @@ extract_calls <- function(package) {
   calls <- imap(funs, process_fun)
   calls <- discard(calls, ~is.null(.) || length(.) == 0)
   
-  return(calls)
+  # keep only the functions with at least one ineteresting call
+  funs <- funs[names(calls)]
+  
+  return(funs)
 }
 
 run_file <- function(file, output_dir) {
